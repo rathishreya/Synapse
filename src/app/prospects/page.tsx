@@ -51,6 +51,13 @@ import {
 import Link from 'next/link';
 import { useState } from 'react';
 
+// Type definitions for type safety
+interface Offering {
+  id: string;
+  name: string;
+  followUpCount: number;
+}
+
 export default function ProspectsPage() {
   const [selectedOffering, setSelectedOffering] = useState('enterprise');
   const [selectedProspects, setSelectedProspects] = useState<number[]>([]);
@@ -120,7 +127,7 @@ export default function ProspectsPage() {
   const [callTranscript, setCallTranscript] = useState('');
   const [callSummary, setCallSummary] = useState('');
 
-  const offerings = [
+  const offerings: Offering[] = [
     { id: 'enterprise', name: 'Enterprise Solutions', followUpCount: 3 },
     { id: 'saas', name: 'SaaS Products', followUpCount: 2 },
     { id: 'consulting', name: 'Consulting Services', followUpCount: 4 }
