@@ -36,7 +36,7 @@ import {
   X
 } from 'lucide-react';
 import Link from 'next/link';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 interface ProspectDetailPageProps {
   params: Promise<{ id: string }>;
@@ -44,17 +44,20 @@ interface ProspectDetailPageProps {
 
 export default function ProspectDetailPage({ params }: ProspectDetailPageProps) {
   const [prospectId, setProspectId] = useState<string>('');
-  const isMountedRef = useRef(true);
   
   useEffect(() => {
-    isMountedRef.current = true;
+    let isMounted = true;
+    
     params.then((resolvedParams) => {
-      if (isMountedRef.current) {
+      if (isMounted) {
         setProspectId(resolvedParams.id);
       }
+    }).catch((error) => {
+      console.error('Error resolving params:', error);
     });
+    
     return () => {
-      isMountedRef.current = false;
+      isMounted = false;
     };
   }, [params]);
   const [isEditing, setIsEditing] = useState(false);
