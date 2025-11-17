@@ -1,1031 +1,641 @@
 'use client';
 
-import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { 
-  Sparkles,
-  TrendingUp,
-  Users,
-  Mail,
-  Phone,
-  Target,
-  Calendar,
-  MessageSquare,
-  CheckCircle2,
-  ArrowUpRight,
-  Plus,
-  X,
-  Linkedin,
-  ExternalLink,
-  Send,
-  Video,
-  Mic,
-  Clock,
-  User,
-  Building2,
-  Pencil,
-  Trash2,
-  Download,
-  Filter,
-  Search,
-  MoreVertical,
-  Bot,
-  Zap,
-  Award,
-  Bell
-} from 'lucide-react';
 import Link from 'next/link';
-
-type Lead = {
-  lead_id: string;
-  name: string;
-  company: string;
-  email: string;
-  phone: string;
-  linkedin_url: string;
-  source: 'LinkedIn_Scrape' | 'Website' | 'CSV_Import' | 'Manual_Entry';
-  offering: 'New' | 'Contacted' | 'Follow-up' | 'Meeting' | 'Proposal' | 'Won' | 'Lost';
-  status: string;
-  priority: 'High' | 'Medium' | 'Low';
-  assigned_to: string;
-  lead_score: number;
-  created_at: string;
-  updated_at: string;
-  notes?: string;
-  next_steps?: string;
-};
-
-type Todo = {
-  id: string;
-  text: string;
-  completed: boolean;
-  dueDate?: string;
-};
-
-type TeamTask = {
-  id: string;
-  task: string;
-  status: 'completed' | 'in-progress' | 'pending';
-  priority: 'High' | 'Medium' | 'Low';
-  dueDate: string;
-  completedAt?: string;
-};
-
-type TeamMember = {
-  id: string;
-  name: string;
-  role: string;
-  email: string;
-  avatar: string;
-  status: 'Active' | 'Away' | 'Offline';
-  currentTask: string;
-  tasksAssigned: number;
-  tasksCompleted: number;
-  tasksPending: number;
-  tasksInProgress: number;
-  dailyCompletion: number;
-  weeklyCompletion: number;
-  monthlyCompletion: number;
-  tasks: TeamTask[];
-};
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  Users, 
+  Target, 
+  Mail, 
+  Phone, 
+  Calendar,
+  Plus,
+  Upload,
+  ChevronRight,
+  Activity,
+  Trophy,
+  Bell,
+  Settings,
+  X,
+  Check,
+  Clock,
+  AlertCircle,
+  UserPlus,
+  MessageCircle,
+  Send,
+  Sparkles,
+  Minimize2,
+  Loader2,
+  ArrowUpRight,
+  Zap
+} from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Textarea } from '@/components/ui/textarea';
 
 export default function DashboardPage() {
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [showLeadDetail, setShowLeadDetail] = useState(false);
   const [showAddLead, setShowAddLead] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [emailTemplate, setEmailTemplate] = useState('');
-  const [isGeneratingEmail, setIsGeneratingEmail] = useState(false);
-  const [showEmailPrompt, setShowEmailPrompt] = useState(false);
-  const [emailPrompt, setEmailPrompt] = useState('');
-  const [meetingAgenda, setMeetingAgenda] = useState('');
-  const [showMeetingPrompt, setShowMeetingPrompt] = useState(false);
-  const [meetingPrompt, setMeetingPrompt] = useState('');
-  const [todos, setTodos] = useState<Todo[]>([
-    { id: '1', text: 'Follow up with Acme Corp', completed: false, dueDate: '2025-11-12' },
-    { id: '2', text: 'Send proposal to TechStart Inc', completed: false, dueDate: '2025-11-13' },
-    { id: '3', text: 'Schedule demo call', completed: true, dueDate: '2025-11-11' }
-  ]);
-  const [newTodo, setNewTodo] = useState('');
-
-  const [leads, setLeads] = useState<Lead[]>([
-    {
-      lead_id: 'LD001',
-      name: 'John Smith',
-      company: 'Acme Corp',
-      email: 'john@acme.com',
-      phone: '+1 (555) 123-4567',
-      linkedin_url: 'https://linkedin.com/in/johnsmith',
-      source: 'LinkedIn_Scrape',
-      offering: 'Follow-up',
-      status: 'Active',
-      priority: 'High',
-      assigned_to: 'You',
-      lead_score: 95,
-      created_at: '2025-11-01',
-      updated_at: '2025-11-11',
-      notes: 'Interested in our enterprise plan',
-      next_steps: 'Schedule product demo'
-    },
-    {
-      lead_id: 'LD002',
-      name: 'Sarah Johnson',
-      company: 'TechStart Inc',
-      email: 'sarah@techstart.com',
-      phone: '+1 (555) 234-5678',
-      linkedin_url: 'https://linkedin.com/in/sarahjohnson',
-      source: 'Website',
-      offering: 'Proposal',
-      status: 'Active',
-      priority: 'High',
-      assigned_to: 'You',
-      lead_score: 88,
-      created_at: '2025-10-28',
-      updated_at: '2025-11-10',
-      notes: 'Requested pricing information',
-      next_steps: 'Send detailed proposal'
-    },
-    {
-      lead_id: 'LD003',
-      name: 'Mike Chen',
-      company: 'Global Solutions',
-      email: 'mike@global.com',
-      phone: '+1 (555) 345-6789',
-      linkedin_url: 'https://linkedin.com/in/mikechen',
-      source: 'CSV_Import',
-      offering: 'New',
-      status: 'Active',
-      priority: 'Medium',
-      assigned_to: 'Team',
-      lead_score: 72,
-      created_at: '2025-11-05',
-      updated_at: '2025-11-11',
-      notes: 'Cold lead from imported list',
-      next_steps: 'Initial outreach email'
-    },
-    {
-      lead_id: 'LD004',
-      name: 'Emily Rodriguez',
-      company: 'Innovation Labs',
-      email: 'emily@innovation.com',
-      phone: '+1 (555) 456-7890',
-      linkedin_url: 'https://linkedin.com/in/emilyrodriguez',
-      source: 'LinkedIn_Scrape',
-      offering: 'Meeting',
-      status: 'Active',
-      priority: 'High',
-      assigned_to: 'You',
-      lead_score: 92,
-      created_at: '2025-10-25',
-      updated_at: '2025-11-09',
-      notes: 'Demo call scheduled for next week',
-      next_steps: 'Prepare demo presentation'
-    },
-    {
-      lead_id: 'LD005',
-      name: 'David Lee',
-      company: 'Future Tech',
-      email: 'david@future.com',
-      phone: '+1 (555) 567-8901',
-      linkedin_url: 'https://linkedin.com/in/davidlee',
-      source: 'Website',
-      offering: 'Contacted',
-      status: 'Active',
-      priority: 'Medium',
-      assigned_to: 'Team',
-      lead_score: 78,
-      created_at: '2025-11-03',
-      updated_at: '2025-11-08',
-      notes: 'Responded to initial email positively',
-      next_steps: 'Schedule qualification call'
-    },
-    {
-      lead_id: 'LD006',
-      name: 'Jessica Martinez',
-      company: 'DataFlow Systems',
-      email: 'jessica@dataflow.com',
-      phone: '+1 (555) 678-9012',
-      linkedin_url: 'https://linkedin.com/in/jessicamartinez',
-      source: 'Manual_Entry',
-      offering: 'Proposal',
-      status: 'Active',
-      priority: 'High',
-      assigned_to: 'You',
-      lead_score: 85,
-      created_at: '2025-10-20',
-      updated_at: '2025-11-07',
-      notes: 'Reviewing our proposal, decision expected soon',
-      next_steps: 'Follow up on proposal status'
-    },
-    {
-      lead_id: 'LD007',
-      name: 'Robert Taylor',
-      company: 'CloudNine Inc',
-      email: 'robert@cloudnine.com',
-      phone: '+1 (555) 789-0123',
-      linkedin_url: 'https://linkedin.com/in/roberttaylor',
-      source: 'LinkedIn_Scrape',
-      offering: 'Won',
-      status: 'Active',
-      priority: 'High',
-      assigned_to: 'You',
-      lead_score: 98,
-      created_at: '2025-09-15',
-      updated_at: '2025-11-05',
-      notes: 'Deal closed! Starting implementation',
-      next_steps: 'Onboarding kickoff meeting'
-    },
-    {
-      lead_id: 'LD008',
-      name: 'Amanda White',
-      company: 'SecureNet Solutions',
-      email: 'amanda@securenet.com',
-      phone: '+1 (555) 890-1234',
-      linkedin_url: 'https://linkedin.com/in/amandawhite',
-      source: 'Website',
-      offering: 'New',
-      status: 'Active',
-      priority: 'Low',
-      assigned_to: 'Team',
-      lead_score: 45,
-      created_at: '2025-11-08',
-      updated_at: '2025-11-08',
-      notes: 'Downloaded whitepaper, low engagement',
-      next_steps: 'Add to nurture campaign'
-    },
-    {
-      lead_id: 'LD009',
-      name: 'Christopher Brown',
-      company: 'Quantum Analytics',
-      email: 'chris@quantum.com',
-      phone: '+1 (555) 901-2345',
-      linkedin_url: 'https://linkedin.com/in/christopherbrown',
-      source: 'CSV_Import',
-      offering: 'Follow-up',
-      status: 'Active',
-      priority: 'Medium',
-      assigned_to: 'You',
-      lead_score: 68,
-      created_at: '2025-10-30',
-      updated_at: '2025-11-06',
-      notes: 'Interested but waiting for budget approval',
-      next_steps: 'Follow up in 2 weeks'
-    },
-    {
-      lead_id: 'LD010',
-      name: 'Michelle Davis',
-      company: 'NextGen Enterprises',
-      email: 'michelle@nextgen.com',
-      phone: '+1 (555) 012-3456',
-      linkedin_url: 'https://linkedin.com/in/michelledavis',
-      source: 'LinkedIn_Scrape',
-      offering: 'Meeting',
-      status: 'Active',
-      priority: 'High',
-      assigned_to: 'You',
-      lead_score: 90,
-      created_at: '2025-10-18',
-      updated_at: '2025-11-04',
-      notes: 'Had initial call, very interested',
-      next_steps: 'Send pricing and case studies'
-    },
-    {
-      lead_id: 'LD011',
-      name: 'James Wilson',
-      company: 'Velocity Dynamics',
-      email: 'james@velocity.com',
-      phone: '+1 (555) 123-7890',
-      linkedin_url: 'https://linkedin.com/in/jameswilson',
-      source: 'Website',
-      offering: 'Contacted',
-      status: 'Active',
-      priority: 'Medium',
-      assigned_to: 'Team',
-      lead_score: 75,
-      created_at: '2025-11-02',
-      updated_at: '2025-11-10',
-      notes: 'Filled out contact form, awaiting response',
-      next_steps: 'Initial discovery call'
-    },
-    {
-      lead_id: 'LD012',
-      name: 'Patricia Anderson',
-      company: 'Alpha Industries',
-      email: 'patricia@alpha.com',
-      phone: '+1 (555) 234-8901',
-      linkedin_url: 'https://linkedin.com/in/patriciaanderson',
-      source: 'Manual_Entry',
-      offering: 'Lost',
-      status: 'Inactive',
-      priority: 'Low',
-      assigned_to: 'Team',
-      lead_score: 35,
-      created_at: '2025-09-20',
-      updated_at: '2025-10-15',
-      notes: 'Chose competitor, keep for future',
-      next_steps: 'Add to quarterly check-in list'
-    },
-    {
-      lead_id: 'LD013',
-      name: 'Daniel Martinez',
-      company: 'Bright Future Corp',
-      email: 'daniel@brightfuture.com',
-      phone: '+1 (555) 345-9012',
-      linkedin_url: 'https://linkedin.com/in/danielmartinez',
-      source: 'LinkedIn_Scrape',
-      offering: 'Proposal',
-      status: 'Active',
-      priority: 'High',
-      assigned_to: 'You',
-      lead_score: 87,
-      created_at: '2025-10-22',
-      updated_at: '2025-11-09',
-      notes: 'Reviewing custom proposal for enterprise plan',
-      next_steps: 'Schedule follow-up call'
-    }
-  ]);
-
-  const [selectedTeamMember, setSelectedTeamMember] = useState<TeamMember | null>(null);
-  const [showTeamDetail, setShowTeamDetail] = useState(false);
-  const [performancePeriod, setPerformancePeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
-
-  // Quick Actions State
-  const [showQuickEmail, setShowQuickEmail] = useState(false);
-  const [showQuickMeeting, setShowQuickMeeting] = useState(false);
-  const [showQuickCall, setShowQuickCall] = useState(false);
-  const [showQuickTask, setShowQuickTask] = useState(false);
-  const [showQuickCampaign, setShowQuickCampaign] = useState(false);
-  
-  const [quickEmailFrom, setQuickEmailFrom] = useState('');
-  const [quickEmailTo, setQuickEmailTo] = useState('');
-  const [quickEmailSubject, setQuickEmailSubject] = useState('');
-  const [quickEmailBody, setQuickEmailBody] = useState('');
-  const [showQuickEmailPrompt, setShowQuickEmailPrompt] = useState(false);
-  const [quickEmailPrompt, setQuickEmailPrompt] = useState('');
-  const [isGeneratingQuickEmail, setIsGeneratingQuickEmail] = useState(false);
-
-  const [quickMeetingTitle, setQuickMeetingTitle] = useState('');
-  const [quickMeetingPlatform, setQuickMeetingPlatform] = useState('');
-  const [quickMeetingAttendees, setQuickMeetingAttendees] = useState('');
-  const [quickMeetingAgenda, setQuickMeetingAgenda] = useState('');
-  const [showQuickMeetingPrompt, setShowQuickMeetingPrompt] = useState(false);
-  const [quickMeetingPrompt, setQuickMeetingPrompt] = useState('');
-  const [isGeneratingQuickMeeting, setIsGeneratingQuickMeeting] = useState(false);
-
-  const [quickCallLeadName, setQuickCallLeadName] = useState('');
-  const [quickCallNumber, setQuickCallNumber] = useState('');
-  const [quickCallTranscript, setQuickCallTranscript] = useState('');
-  const [showQuickCallPrompt, setShowQuickCallPrompt] = useState(false);
-  const [quickCallPrompt, setQuickCallPrompt] = useState('');
-  const [isGeneratingQuickCall, setIsGeneratingQuickCall] = useState(false);
-
-  const [quickTaskMembers, setQuickTaskMembers] = useState<string[]>([]);
-  const [quickTaskDescription, setQuickTaskDescription] = useState('');
-  const [quickTaskDateTime, setQuickTaskDateTime] = useState('');
-  const [quickTaskScheduled, setQuickTaskScheduled] = useState(false);
-
-  const [quickCampaignLeads, setQuickCampaignLeads] = useState<string[]>([]);
-  const [quickCampaignFrom, setQuickCampaignFrom] = useState('');
-  const [quickCampaignSubject, setQuickCampaignSubject] = useState('');
-  const [quickCampaignBody, setQuickCampaignBody] = useState('');
-  const [showQuickCampaignPrompt, setShowQuickCampaignPrompt] = useState(false);
-  const [quickCampaignPrompt, setQuickCampaignPrompt] = useState('');
-  const [isGeneratingQuickCampaign, setIsGeneratingQuickCampaign] = useState(false);
-  const [quickCampaignScheduled, setQuickCampaignScheduled] = useState(false);
-  const [quickCampaignDateTime, setQuickCampaignDateTime] = useState('');
-
+  const [addLeadMethod, setAddLeadMethod] = useState<'single' | 'import' | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [userName] = useState('John Doe'); // You can make this dynamic
-
-  // AI Sales Assistant State
-  const [showAssistant, setShowAssistant] = useState(false);
-  const [assistantMessages, setAssistantMessages] = useState<Array<{id: string; text: string; sender: 'user' | 'assistant'; timestamp: string}>>([
+  const [unreadCount, setUnreadCount] = useState(3);
+  
+  // AI Chat Assistant State
+  const [showChatAssistant, setShowChatAssistant] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Array<{
+    id: number;
+    text: string;
+    sender: 'user' | 'ai';
+    timestamp: Date;
+    action?: {
+      type: 'schedule_meeting' | 'view_prospects' | 'send_email' | 'view_analytics';
+      data?: any;
+    };
+  }>>([
     {
-      id: '1',
-      text: "Hi! I'm your Sales AI Assistant 🚀 I can help you with:\n\n• Scheduling meetings\n• Managing leads\n• Creating campaigns\n• Analyzing your dashboard data\n• Assigning tasks to your team\n\nWhat would you like to do today?",
-      sender: 'assistant',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      id: 1,
+      text: "Hi! I'm your AI assistant. I can help you understand your dashboard data, schedule meetings, manage prospects, and more. What can I help you with today?",
+      sender: 'ai',
+      timestamp: new Date()
     }
   ]);
-  const [assistantInput, setAssistantInput] = useState('');
+  const [chatInput, setChatInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLTextAreaElement>(null);
 
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
+  // Notifications data
+  const notifications = [
+    { id: 1, title: 'New lead added', message: 'John Smith from Acme Corp was added to your pipeline', time: '2 min ago', unread: true, icon: UserPlus, color: 'text-green-500' },
+    { id: 2, title: 'Follow-up due', message: '5 follow-ups are due today', time: '1 hour ago', unread: true, icon: Clock, color: 'text-orange-500' },
+    { id: 3, title: 'Campaign completed', message: 'Your "Q4 Outreach" campaign has finished', time: '3 hours ago', unread: true, icon: Check, color: 'text-blue-500' },
+    { id: 4, title: 'Template update', message: 'AI has optimized your outreach template', time: '5 hours ago', unread: false, icon: Mail, color: 'text-purple-500' },
+  ];
+
+  // Mock data
+  const stats = [
     {
-      id: 'TM001',
-      name: 'Alex Thompson',
-      role: 'Senior Sales Executive',
-      email: 'alex@salesai.com',
-      avatar: 'AT',
-      status: 'Active',
-      currentTask: 'Following up with 3 high-priority leads',
-      tasksAssigned: 8,
-      tasksCompleted: 6,
-      tasksPending: 1,
-      tasksInProgress: 1,
-      dailyCompletion: 75,
-      weeklyCompletion: 82,
-      monthlyCompletion: 88,
-      tasks: [
-        { id: 'T1', task: 'Send proposal to Acme Corp', status: 'completed', priority: 'High', dueDate: '2025-11-11', completedAt: '2025-11-11 10:30 AM' },
-        { id: 'T2', task: 'Follow up with TechStart Inc', status: 'in-progress', priority: 'High', dueDate: '2025-11-11' },
-        { id: 'T3', task: 'Demo call preparation', status: 'completed', priority: 'Medium', dueDate: '2025-11-11', completedAt: '2025-11-11 2:15 PM' },
-        { id: 'T4', task: 'Update CRM records', status: 'pending', priority: 'Low', dueDate: '2025-11-12' },
-        { id: 'T5', task: 'Review new leads', status: 'completed', priority: 'Medium', dueDate: '2025-11-10', completedAt: '2025-11-10 4:00 PM' }
-      ]
+      title: 'Total Prospects',
+      value: '2,543',
+      change: '+12.5%',
+      trending: 'up' as const,
+      icon: Users,
+      color: 'from-violet-500 to-purple-600',
+      lightColor: 'from-violet-500/10 to-purple-600/10'
     },
     {
-      id: 'TM002',
-      name: 'Sophia Chen',
-      role: 'Sales Representative',
-      email: 'sophia@salesai.com',
-      avatar: 'SC',
-      status: 'Active',
-      currentTask: 'Preparing demo presentation for Innovation Labs',
-      tasksAssigned: 10,
-      tasksCompleted: 8,
-      tasksPending: 2,
-      tasksInProgress: 0,
-      dailyCompletion: 80,
-      weeklyCompletion: 85,
-      monthlyCompletion: 83,
-      tasks: [
-        { id: 'T6', task: 'Schedule meeting with Global Solutions', status: 'completed', priority: 'High', dueDate: '2025-11-11', completedAt: '2025-11-11 9:00 AM' },
-        { id: 'T7', task: 'Send follow-up emails', status: 'completed', priority: 'Medium', dueDate: '2025-11-11', completedAt: '2025-11-11 11:45 AM' },
-        { id: 'T8', task: 'Prepare demo slides', status: 'pending', priority: 'High', dueDate: '2025-11-12' },
-        { id: 'T9', task: 'Client research for Innovation Labs', status: 'completed', priority: 'Medium', dueDate: '2025-11-10', completedAt: '2025-11-10 3:30 PM' },
-        { id: 'T10', task: 'Update pipeline status', status: 'pending', priority: 'Low', dueDate: '2025-11-12' }
-      ]
+      title: 'Total Leads',
+      value: '847',
+      change: '+8.2%',
+      trending: 'up' as const,
+      icon: Target,
+      color: 'from-cyan-500 to-blue-600',
+      lightColor: 'from-cyan-500/10 to-blue-600/10'
     },
     {
-      id: 'TM003',
-      name: 'Marcus Williams',
-      role: 'Sales Development Rep',
-      email: 'marcus@salesai.com',
-      avatar: 'MW',
-      status: 'Active',
-      currentTask: 'Cold outreach to new prospects',
-      tasksAssigned: 12,
-      tasksCompleted: 9,
-      tasksPending: 1,
-      tasksInProgress: 2,
-      dailyCompletion: 75,
-      weeklyCompletion: 78,
-      monthlyCompletion: 80,
-      tasks: [
-        { id: 'T11', task: 'Qualify 15 new leads', status: 'completed', priority: 'High', dueDate: '2025-11-11', completedAt: '2025-11-11 1:00 PM' },
-        { id: 'T12', task: 'Cold calling campaign', status: 'in-progress', priority: 'High', dueDate: '2025-11-11' },
-        { id: 'T13', task: 'LinkedIn outreach', status: 'in-progress', priority: 'Medium', dueDate: '2025-11-11' },
-        { id: 'T14', task: 'Update lead scores', status: 'pending', priority: 'Low', dueDate: '2025-11-12' },
-        { id: 'T15', task: 'Email sequence setup', status: 'completed', priority: 'Medium', dueDate: '2025-11-10', completedAt: '2025-11-10 5:00 PM' }
-      ]
+      title: 'Active Campaigns',
+      value: '12',
+      change: '+3',
+      trending: 'up' as const,
+      icon: Activity,
+      color: 'from-pink-500 to-rose-600',
+      lightColor: 'from-pink-500/10 to-rose-600/10'
     },
     {
-      id: 'TM004',
-      name: 'Emma Rodriguez',
-      role: 'Account Executive',
-      email: 'emma@salesai.com',
-      avatar: 'ER',
-      status: 'Away',
-      currentTask: 'Client meeting - Back at 3 PM',
-      tasksAssigned: 7,
-      tasksCompleted: 5,
-      tasksPending: 2,
-      tasksInProgress: 0,
-      dailyCompletion: 71,
-      weeklyCompletion: 80,
-      monthlyCompletion: 85,
-      tasks: [
-        { id: 'T16', task: 'Negotiate contract with DataFlow', status: 'completed', priority: 'High', dueDate: '2025-11-11', completedAt: '2025-11-11 10:00 AM' },
-        { id: 'T17', task: 'Client meeting presentation', status: 'completed', priority: 'High', dueDate: '2025-11-11', completedAt: '2025-11-11 2:00 PM' },
-        { id: 'T18', task: 'Send pricing breakdown', status: 'pending', priority: 'Medium', dueDate: '2025-11-12' },
-        { id: 'T19', task: 'Follow up with CloudNine', status: 'pending', priority: 'Medium', dueDate: '2025-11-12' },
-        { id: 'T20', task: 'Update account notes', status: 'completed', priority: 'Low', dueDate: '2025-11-10', completedAt: '2025-11-10 4:30 PM' }
-      ]
+      title: 'Follow-ups Due',
+      value: '34',
+      change: '-5',
+      trending: 'down' as const,
+      icon: Calendar,
+      color: 'from-orange-500 to-amber-600',
+      lightColor: 'from-orange-500/10 to-amber-600/10'
     },
     {
-      id: 'TM005',
-      name: 'Liam Parker',
-      role: 'Sales Representative',
-      email: 'liam@salesai.com',
-      avatar: 'LP',
-      status: 'Active',
-      currentTask: 'Processing inbound leads',
-      tasksAssigned: 9,
-      tasksCompleted: 7,
-      tasksPending: 1,
-      tasksInProgress: 1,
-      dailyCompletion: 78,
-      weeklyCompletion: 81,
-      monthlyCompletion: 79,
-      tasks: [
-        { id: 'T21', task: 'Respond to demo requests', status: 'completed', priority: 'High', dueDate: '2025-11-11', completedAt: '2025-11-11 9:30 AM' },
-        { id: 'T22', task: 'Qualify website leads', status: 'in-progress', priority: 'Medium', dueDate: '2025-11-11' },
-        { id: 'T23', task: 'Send welcome emails', status: 'completed', priority: 'Medium', dueDate: '2025-11-11', completedAt: '2025-11-11 11:00 AM' },
-        { id: 'T24', task: 'Schedule discovery calls', status: 'pending', priority: 'High', dueDate: '2025-11-12' },
-        { id: 'T25', task: 'Update lead statuses', status: 'completed', priority: 'Low', dueDate: '2025-11-10', completedAt: '2025-11-10 3:00 PM' }
-      ]
+      title: 'Win Rate',
+      value: '24.3%',
+      change: '+2.1%',
+      trending: 'up' as const,
+      icon: Trophy,
+      color: 'from-emerald-500 to-teal-600',
+      lightColor: 'from-emerald-500/10 to-teal-600/10'
     }
+  ];
+
+  const quickActions = [
+    { icon: Users, label: 'Prospects', color: 'from-indigo-500 to-indigo-600', href: '/prospects' },
+    { icon: Mail, label: 'Cold Mailing', color: 'from-blue-500 to-blue-600', href: '/cold-mailing' },
+    { icon: Phone, label: 'Cold Call', color: 'from-green-500 to-green-600', href: '/cold-calling' },
+    { icon: Calendar, label: 'Schedule Meeting', color: 'from-purple-500 to-purple-600', href: '/meetings' },
+    { icon: Activity, label: 'Email Campaign', color: 'from-orange-500 to-orange-600', href: '/campaigns' }
+  ];
+
+  const activeLeads = [
+    { name: 'John Smith', company: 'Acme Corp', status: 'Hot', lastContact: '2 hours ago', email: 'john@acme.com' },
+    { name: 'Sarah Johnson', company: 'Tech Startup', status: 'Warm', lastContact: '1 day ago', email: 'sarah@techstartup.com' },
+    { name: 'Mike Wilson', company: 'Big Enterprise', status: 'Cold', lastContact: '3 days ago', email: 'mike@bigenterprise.com' },
+  ];
+
+  const [todos, setTodos] = useState([
+    { id: 1, text: 'Follow up with Acme Corp', date: 'Today', completed: false },
+    { id: 2, text: 'Send proposal to Tech Startup', date: 'Tomorrow', completed: false },
   ]);
+
+  const [newTodo, setNewTodo] = useState('');
 
   const addTodo = () => {
     if (newTodo.trim()) {
-      setTodos([...todos, { id: Date.now().toString(), text: newTodo, completed: false }]);
+      setTodos([...todos, { id: Date.now(), text: newTodo, date: 'Today', completed: false }]);
       setNewTodo('');
     }
   };
 
-  const toggleTodo = (id: string) => {
-    setTodos(todos.map(todo => todo.id === id ? { ...todo, completed: !todo.completed } : todo));
-  };
-
-  const deleteTodo = (id: string) => {
-    setTodos(todos.filter(todo => todo.id !== id));
-  };
-
-  const generateEmailTemplate = () => {
-    if (!showEmailPrompt) {
-      setShowEmailPrompt(true);
-      return;
-    }
-    
-    setIsGeneratingEmail(true);
-    setShowEmailPrompt(false);
-    setTimeout(() => {
-      const customContext = emailPrompt ? `\n\nContext: ${emailPrompt}` : '';
-      setEmailTemplate(`Hi ${selectedLead?.name},
-
-I hope this email finds you well. I wanted to reach out regarding ${selectedLead?.company}'s potential interest in our solution.${customContext}
-
-Based on our analysis, I believe our platform could help you achieve:
-• Increased sales productivity by 40%
-• Automated lead generation and qualification
-• AI-powered insights and forecasting
-
-Would you be available for a 15-minute call next week to discuss how we can help ${selectedLead?.company} scale its sales operations?
-
-Best regards,
-John Doe
-Sales Executive`);
-      setIsGeneratingEmail(false);
-      setEmailPrompt('');
-    }, 1500);
-  };
-
-  const generateMeetingAgenda = () => {
-    if (!showMeetingPrompt) {
-      setShowMeetingPrompt(true);
-      return;
-    }
-    
-    setShowMeetingPrompt(false);
-    const customContext = meetingPrompt ? `\n\nFocus Areas: ${meetingPrompt}\n` : '';
-    setMeetingAgenda(`Meeting Agenda: ${selectedLead?.company} - Product Demo
-${customContext}
-1. Introduction (5 min)
-   - Brief overview of attendees
-   - Meeting objectives
-
-2. Company Overview (10 min)
-   - About SalesAI
-   - Our key differentiators
-
-3. Product Demo (20 min)
-   - Core features walkthrough
-   - Live demonstration
-   - Use cases relevant to ${selectedLead?.company}
-
-4. Q&A Session (15 min)
-   - Address questions and concerns
-   - Technical requirements discussion
-
-5. Next Steps (10 min)
-   - Proposal timeline
-   - Implementation roadmap
-   - Pricing discussion`);
-    setMeetingPrompt('');
-  };
-
-  const updateLeadStatus = (leadId: string, field: 'status' | 'assigned_to', value: string) => {
-    setLeads(leads.map(lead => 
-      lead.lead_id === leadId ? { ...lead, [field]: value, updated_at: new Date().toISOString().split('T')[0] } : lead
+  const toggleTodo = (id: number) => {
+    setTodos(todos.map(todo => 
+      todo.id === id ? { ...todo, completed: !todo.completed } : todo
     ));
   };
 
-  // Quick Actions Handlers
-  const generateQuickEmailTemplate = () => {
-    if (!showQuickEmailPrompt) {
-      setShowQuickEmailPrompt(true);
-      return;
-    }
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  // AI Response Generator
+  const generateAIResponse = (userMessage: string) => {
+    const lowerMessage = userMessage.toLowerCase();
     
-    setIsGeneratingQuickEmail(true);
-    setShowQuickEmailPrompt(false);
-    setTimeout(() => {
-      const customContext = quickEmailPrompt ? `\n\n${quickEmailPrompt}` : '';
-      setQuickEmailBody(`Dear Recipient,
-      
-I hope this email finds you well.${customContext}
-
-I wanted to reach out regarding our platform and how it can help accelerate your sales process. Our solution offers:
-
-• AI-powered lead generation and qualification
-• Automated outreach campaigns  
-• Intelligent meeting scheduling
-• Real-time analytics and insights
-
-Would you be available for a brief call next week to discuss how we can help your team achieve its goals?
-
-Best regards,
-Your Name
-SalesAI`);
-      setIsGeneratingQuickEmail(false);
-      setQuickEmailPrompt('');
-    }, 1500);
-  };
-
-  const generateQuickMeetingAgenda = () => {
-    if (!showQuickMeetingPrompt) {
-      setShowQuickMeetingPrompt(true);
-      return;
-    }
-    
-    setIsGeneratingQuickMeeting(true);
-    setShowQuickMeetingPrompt(false);
-    setTimeout(() => {
-      const customContext = quickMeetingPrompt ? `\n\nFocus: ${quickMeetingPrompt}\n` : '';
-      setQuickMeetingAgenda(`Meeting Agenda${customContext}
-
-1. Introduction (5 min)
-   - Brief overview of attendees
-   - Meeting objectives
-
-2. Product Overview (15 min)
-   - Key features demonstration
-   - Use cases and benefits
-   - ROI discussion
-
-3. Q&A Session (10 min)
-   - Address questions and concerns
-   - Technical requirements
-
-4. Next Steps (10 min)
-   - Implementation timeline
-   - Pricing discussion
-   - Follow-up actions`);
-      setIsGeneratingQuickMeeting(false);
-      setQuickMeetingPrompt('');
-    }, 1500);
-  };
-
-  const generateQuickCallScript = () => {
-    if (!showQuickCallPrompt) {
-      setShowQuickCallPrompt(true);
-      return;
-    }
-    
-    setIsGeneratingQuickCall(true);
-    setShowQuickCallPrompt(false);
-    setTimeout(() => {
-      const customContext = quickCallPrompt ? `\nFocus: ${quickCallPrompt}\n\n` : '';
-      setQuickCallTranscript(`Call Script for ${quickCallLeadName || 'Lead'}
-${customContext}
-Opening:
-"Hi ${quickCallLeadName || '[Name]'}, this is [Your Name] from SalesAI. I hope I'm not catching you at a bad time?"
-
-Value Proposition:
-"I wanted to reach out because we help sales teams like yours increase productivity by 40% through AI-powered automation. Would you have a few minutes to discuss how this could benefit your team?"
-
-Discovery Questions:
-- What's your current process for lead generation?
-- How much time does your team spend on manual outreach?
-- What are your biggest sales challenges right now?
-
-Next Steps:
-- Schedule detailed demo
-- Send follow-up email with resources
-- Add to CRM for tracking`);
-      setIsGeneratingQuickCall(false);
-      setQuickCallPrompt('');
-    }, 1500);
-  };
-
-  const generateQuickCampaignContent = () => {
-    if (!showQuickCampaignPrompt) {
-      setShowQuickCampaignPrompt(true);
-      return;
-    }
-    
-    setIsGeneratingQuickCampaign(true);
-    setShowQuickCampaignPrompt(false);
-    setTimeout(() => {
-      const customContext = quickCampaignPrompt ? `\n\n${quickCampaignPrompt}` : '';
-      setQuickCampaignBody(`Hi {{Name}},
-
-I hope you're having a great week!${customContext}
-
-I wanted to reach out because {{Company}} could benefit significantly from our AI-powered sales platform. We're helping companies like yours:
-
-✓ Increase lead generation by 3x
-✓ Automate 80% of repetitive tasks
-✓ Close deals 40% faster
-✓ Gain real-time insights into pipeline
-
-I'd love to show you how we can help {{Company}} achieve similar results.
-
-Would you be open to a quick 15-minute demo next week?
-
-Best regards,
-{{Your_Name}}
-SalesAI
-
-P.S. Here's a case study showing how we helped a company similar to yours increase revenue by 60% in just 3 months.`);
-      setIsGeneratingQuickCampaign(false);
-      setQuickCampaignPrompt('');
-    }, 1500);
-  };
-
-  const filteredLeads = leads.filter(lead =>
-    lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    lead.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    lead.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // AI Assistant Handler
-  const handleAssistantMessage = () => {
-    if (!assistantInput.trim()) return;
-
-    const userMessage = {
-      id: Date.now().toString(),
-      text: assistantInput,
-      sender: 'user' as const,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-
-    setAssistantMessages(prev => [...prev, userMessage]);
-    setAssistantInput('');
-
-    // Simulate AI response
-    setTimeout(() => {
-      let responseText = '';
-      const input = assistantInput.toLowerCase();
-
-      if (input.includes('schedule') || input.includes('meeting')) {
-        responseText = "I'd be happy to help you schedule a meeting! 📅\n\nPlease provide me with:\n• Who should attend? (Email addresses)\n• What's the meeting about? (Subject)\n• When would you like to schedule it? (Date & Time)\n• Which platform? (Zoom, Google Meet, or Teams)\n\nYou can also use the Quick Actions panel to schedule meetings instantly!";
-      } else if (input.includes('lead') || input.includes('prospect')) {
-        responseText = `Based on your dashboard data:\n\n📊 Total Leads: 1,247 (+12.5%)\n🎯 Conversion Rate: 34.2%\n⭐ Top Priority Leads: ${leads.filter(l => l.priority === 'High').length}\n\nWould you like me to:\n• Show you high-priority leads\n• Add a new lead\n• Filter leads by status\n• Create an outreach campaign?`;
-      } else if (input.includes('campaign')) {
-        responseText = "I can help you create an email campaign! 📧\n\nYou currently have 8 active campaigns. Would you like to:\n• Create a new campaign\n• View campaign performance\n• Schedule a campaign\n\nJust click the 'Email Campaign' button in Quick Actions to get started!";
-      } else if (input.includes('task') || input.includes('assign')) {
-        responseText = `I can help you assign tasks to your team! 👥\n\nYour team members:\n${teamMembers.map(m => `• ${m.name} - ${m.role}`).join('\n')}\n\nWho would you like to assign a task to? You can also use the Quick Actions panel to assign tasks directly!`;
-      } else if (input.includes('performance') || input.includes('analytics')) {
-        responseText = "Here's your performance overview:\n\n✅ Win Rate: 67% (+15%)\n📈 Active Campaigns: 8\n⏰ Follow-ups Due: 23\n🎯 Conversion Rate: 34.2%\n\nYou're performing great! Your win rate is up 15% from last month. Would you like detailed analytics?";
-      } else if (input.includes('team')) {
-        responseText = `Your team is performing well! 👏\n\n${teamMembers.slice(0, 3).map(m => `• ${m.name}: ${m.dailyCompletion}% daily completion`).join('\n')}\n\nWould you like to see the full team tracker or assign new tasks?`;
-      } else {
-        responseText = "I'm here to help! I can assist you with:\n\n📅 Scheduling meetings\n📊 Analyzing dashboard metrics\n📧 Creating campaigns\n👥 Managing your team\n🎯 Working with leads\n\nWhat specific task can I help you with?";
-      }
-
-      const assistantResponse = {
-        id: (Date.now() + 1).toString(),
-        text: responseText,
-        sender: 'assistant' as const,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    // Dashboard stats queries
+    if (lowerMessage.includes('prospect') && (lowerMessage.includes('total') || lowerMessage.includes('how many'))) {
+      return {
+        text: `You currently have 2,543 total prospects in your database, which is up by 12.5% compared to last month. Out of these, 847 have converted to leads (34% conversion rate). Would you like me to show you more details about any specific segment?`,
+        action: { type: 'view_prospects' as const }
       };
+    }
+    
+    if (lowerMessage.includes('lead') && (lowerMessage.includes('total') || lowerMessage.includes('how many'))) {
+      return {
+        text: `You have 847 total leads, which represents an 8.2% increase from last month. These are prospects who have engaged with your outreach. The breakdown is: Hot leads: 12, Warm leads: 156, Cold leads: 679. Your current win rate is 24.3%.`,
+        action: { type: 'view_prospects' as const }
+      };
+    }
+    
+    if (lowerMessage.includes('campaign')) {
+      return {
+        text: `You have 12 active campaigns running right now, which is an increase of 3 campaigns from last month. Your most successful campaign is "Q1 Enterprise Outreach" with a 49.5% open rate and 10% reply rate. Would you like to see detailed analytics?`,
+        action: { type: 'view_analytics' as const }
+      };
+    }
+    
+    if (lowerMessage.includes('follow') || lowerMessage.includes('due')) {
+      return {
+        text: `You have 34 follow-ups due today and in the next few days. Here are the top priorities:\n\n1. Acme Corp - Due today (Hot lead)\n2. Tech Startup - Due today (Warm lead)\n3. Big Enterprise - Due tomorrow (Cold lead)\n\nWould you like me to help you draft follow-up emails for any of these?`
+      };
+    }
+    
+    if (lowerMessage.includes('win rate') || lowerMessage.includes('conversion')) {
+      return {
+        text: `Your current win rate is 24.3%, which is up 2.1% from last month! This means you're successfully converting about 1 in 4 qualified leads. Your best performing offering is Enterprise AI Platform with a 31% win rate. Keep up the great work!`
+      };
+    }
+    
+    // Meeting scheduling
+    if (lowerMessage.includes('schedule') && lowerMessage.includes('meeting')) {
+      return {
+        text: `I can help you schedule a meeting! Here's what I need:\n\n1. Who is the meeting with? (prospect name or email)\n2. What date and time works best?\n3. Which platform? (Google Meet, Zoom, or MS Teams)\n4. What's the meeting purpose?\n\nYou can also click the button below to open the full scheduling interface.`,
+        action: { type: 'schedule_meeting' as const }
+      };
+    }
+    
+    if (lowerMessage.includes('schedule') || lowerMessage.includes('meeting')) {
+      return {
+        text: `I can help you schedule meetings! You can:\n\n• Schedule a new meeting with a prospect\n• View your upcoming meetings\n• Reschedule existing meetings\n\nWould you like to schedule a meeting now? Just let me know the prospect's name and your preferred time.`,
+        action: { type: 'schedule_meeting' as const }
+      };
+    }
+    
+    // Email queries
+    if (lowerMessage.includes('email') || lowerMessage.includes('mail')) {
+      return {
+        text: `I can help with email-related tasks:\n\n• Your email open rate is currently 34%\n• Your reply rate is at 8.2%\n• You have 12 active email campaigns\n\nWould you like to compose a new email, view analytics, or check your inbox?`,
+        action: { type: 'send_email' as const }
+      };
+    }
+    
+    // Analytics
+    if (lowerMessage.includes('analytic') || lowerMessage.includes('performance') || lowerMessage.includes('report')) {
+      return {
+        text: `Here's a quick performance summary:\n\n📊 This Month:\n• Prospects: 2,543 (+12.5%)\n• Leads: 847 (+8.2%)\n• Active Campaigns: 12\n• Win Rate: 24.3% (+2.1%)\n\n🔥 Top Performers:\n• Best campaign: "Q1 Enterprise Outreach"\n• Best day: Tuesdays at 10 AM\n• Best offering: Enterprise AI Platform\n\nWant detailed analytics for any specific area?`,
+        action: { type: 'view_analytics' as const }
+      };
+    }
+    
+    // Hot leads
+    if (lowerMessage.includes('hot') || lowerMessage.includes('priority')) {
+      return {
+        text: `You have 3 hot leads that need immediate attention:\n\n1. John Smith from Acme Corp\n   Last contact: 2 hours ago\n   Action: Follow up today\n\n2. Sarah Johnson from Tech Startup\n   Last contact: 1 day ago\n   Action: Send proposal\n\n3. Mike Wilson from Big Enterprise\n   Last contact: 3 days ago\n   Action: Schedule call\n\nWould you like me to help you reach out to any of these?`
+      };
+    }
+    
+    // AI insights
+    if (lowerMessage.includes('insight') || lowerMessage.includes('recommend') || lowerMessage.includes('suggest')) {
+      return {
+        text: `Based on your data, here are my top recommendations:\n\n1. 🔥 High Priority: 3 hot leads haven't been contacted in 48 hours - follow up now!\n\n2. 📧 Optimization: Your email open rate is 34%. Try personalizing subject lines for better engagement.\n\n3. ⏰ Best Time: Your data shows Tuesdays at 10 AM have the highest response rate.\n\nWant me to help implement any of these?`
+      };
+    }
+    
+    // Greeting
+    if (lowerMessage.includes('hi') || lowerMessage.includes('hello') || lowerMessage.includes('hey')) {
+      return {
+        text: `Hello! 👋 I'm here to help you with your sales dashboard. I can:\n\n• Answer questions about your metrics\n• Schedule meetings\n• Provide insights and recommendations\n• Help with prospect management\n• Assist with campaigns\n\nWhat would you like to know?`
+      };
+    }
+    
+    // Help
+    if (lowerMessage.includes('help') || lowerMessage.includes('what can you')) {
+      return {
+        text: `I can help you with:\n\n📊 Dashboard Queries:\n• "How many prospects do I have?"\n• "What's my win rate?"\n• "Show me my campaigns"\n\n📅 Actions:\n• "Schedule a meeting"\n• "Send an email"\n• "View analytics"\n\n💡 Insights:\n• "Give me recommendations"\n• "Show hot leads"\n• "What should I prioritize?"\n\nJust ask me anything!`
+      };
+    }
+    
+    // Default response
+    return {
+      text: `I understand you're asking about "${userMessage}". While I can provide information about your prospects, leads, campaigns, meetings, and performance metrics, I need a bit more context. Could you rephrase your question or try asking:\n\n• "How many prospects do I have?"\n• "Schedule a meeting"\n• "Show me my campaign performance"\n• "What are my hot leads?"`
+    };
+  };
 
-      setAssistantMessages(prev => [...prev, assistantResponse]);
-    }, 800);
+  const handleSendMessage = async () => {
+    if (!chatInput.trim()) return;
+    
+    const userMessage = {
+      id: Date.now(),
+      text: chatInput,
+      sender: 'user' as const,
+      timestamp: new Date()
+    };
+    
+    setChatMessages(prev => [...prev, userMessage]);
+    setChatInput('');
+    setIsTyping(true);
+    
+    // Simulate AI thinking delay
+    setTimeout(() => {
+      const aiResponse = generateAIResponse(chatInput);
+      const aiMessage = {
+        id: Date.now() + 1,
+        text: aiResponse.text,
+        sender: 'ai' as const,
+        timestamp: new Date(),
+        action: aiResponse.action
+      };
+      
+      setChatMessages(prev => [...prev, aiMessage]);
+      setIsTyping(false);
+    }, 1000 + Math.random() * 1000); // Random delay between 1-2 seconds
+  };
+
+  const handleQuickQuestion = (question: string) => {
+    setChatInput(question);
+    chatInputRef.current?.focus();
   };
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative overflow-hidden">
       {/* Premium Background Effects */}
-      <div className="fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-background to-background" />
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-l from-primary/10 to-transparent rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-gradient-to-r from-secondary/10 to-transparent rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:4rem_4rem]" />
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        {/* Animated Gradient Orbs */}
+        <motion.div
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-cyan-500/30 to-blue-600/30 rounded-full blur-3xl"
+        />
+        <motion.div
+          animate={{
+            scale: [1.2, 1, 1.2],
+            opacity: [0.2, 0.4, 0.2],
+          }}
+          transition={{
+            duration: 10,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 1
+          }}
+          className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-tr from-purple-500/30 to-pink-600/30 rounded-full blur-3xl"
+        />
+        <motion.div
+          animate={{
+            scale: [1, 1.3, 1],
+            opacity: [0.25, 0.45, 0.25],
+          }}
+          transition={{
+            duration: 12,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 2
+          }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-violet-500/20 to-indigo-600/20 rounded-full blur-3xl"
+        />
+        
+        {/* Grid Pattern Overlay */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.02)_1px,transparent_1px)] bg-[size:72px_72px]" />
       </div>
 
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-card/60 backdrop-blur-xl border-b border-border shadow-lg shadow-primary/5">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-primary" />
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              SalesAI
-            </span>
-            <Badge variant="secondary" className="ml-2">Dashboard</Badge>
-          </div>
-          <div className="flex items-center gap-4">
-            {/* Notifications */}
-            <div className="relative">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="hover:bg-primary/10 relative"
-                onClick={() => setShowNotifications(!showNotifications)}
+      {/* Header */}
+      <div className="border-b border-white/10 bg-slate-900/30 backdrop-blur-2xl sticky top-0 z-40 shadow-2xl">
+        <div className="container mx-auto px-6 py-5">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-3 mb-2"
               >
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </Button>
-              
-              {showNotifications && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="absolute right-0 mt-2 w-80 bg-card border border-border rounded-xl shadow-2xl shadow-primary/20 z-50 backdrop-blur-xl"
-                >
-                  <div className="p-4 border-b border-border">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-foreground">Notifications</h3>
-                      <Badge className="bg-primary/20 text-primary border-primary/30">3 new</Badge>
-                    </div>
+                <div className="relative">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
+                  <div className="relative p-2 bg-slate-900 rounded-lg">
+                    <Sparkles className="w-6 h-6 text-cyan-400" />
                   </div>
-                  <div className="max-h-[400px] overflow-y-auto">
-                    {[
-                      {
-                        id: 1,
-                        title: 'New lead assigned',
-                        message: 'John Smith from Acme Corp has been assigned to you',
-                        time: '5 minutes ago',
-                        unread: true,
-                        icon: <User className="w-4 h-4" />
-                      },
-                      {
-                        id: 2,
-                        title: 'Meeting reminder',
-                        message: 'Product demo with TechStart Inc in 30 minutes',
-                        time: '25 minutes ago',
-                        unread: true,
-                        icon: <Calendar className="w-4 h-4" />
-                      },
-                      {
-                        id: 3,
-                        title: 'Email campaign completed',
-                        message: 'Your campaign reached 150 leads with 45% open rate',
-                        time: '2 hours ago',
-                        unread: true,
-                        icon: <Mail className="w-4 h-4" />
-                      },
-                      {
-                        id: 4,
-                        title: 'Task completed',
-                        message: 'Alex Thompson completed "Send proposal to Global Solutions"',
-                        time: '3 hours ago',
-                        unread: false,
-                        icon: <CheckCircle2 className="w-4 h-4" />
-                      },
-                      {
-                        id: 5,
-                        title: 'New message',
-                        message: 'Sarah Johnson replied to your email',
-                        time: '5 hours ago',
-                        unread: false,
-                        icon: <MessageSquare className="w-4 h-4" />
-                      }
-                    ].map((notification) => (
-                      <div
-                        key={notification.id}
-                        className={`p-4 border-b border-border hover:bg-card/50 cursor-pointer transition-colors ${
-                          notification.unread ? 'bg-primary/5' : ''
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                            notification.unread 
-                              ? 'bg-gradient-to-br from-primary to-secondary text-white' 
-                              : 'bg-muted text-muted-foreground'
-                          }`}>
-                            {notification.icon}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground mb-1">
-                              {notification.title}
-                            </p>
-                            <p className="text-xs text-muted-foreground mb-1 line-clamp-2">
-                              {notification.message}
-                            </p>
-                            <p className="text-xs text-muted-foreground">{notification.time}</p>
-                          </div>
-                          {notification.unread && (
-                            <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-2"></div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="p-3 border-t border-border">
-                    <Button variant="ghost" className="w-full text-primary hover:bg-primary/10" size="sm">
-                      View all notifications
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
+                </div>
+                <div>
+                  <motion.h1 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="text-3xl font-bold bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent"
+                  >
+                    Synapse AI
+                  </motion.h1>
+                  <motion.p 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-xs text-gray-500 font-medium tracking-wide"
+                  >
+                    Your AI Sales Representative
+                  </motion.p>
+                </div>
+              </motion.div>
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="flex items-center gap-2"
+              >
+                <span className="text-sm text-gray-400">Welcome back,</span>
+                <span className="text-sm font-semibold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+                  Sarah Chen
+                </span>
+                <span className="px-2 py-0.5 text-xs font-medium bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30 rounded-full">
+                  Premium
+                </span>
+              </motion.div>
             </div>
             
-            <Link href="/settings">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center text-white text-sm font-semibold shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/50 transition-all duration-300 cursor-pointer hover:scale-110">
-                JD
+            {/* Right side actions */}
+            <div className="flex items-center gap-3">
+              <Dialog open={showAddLead} onOpenChange={setShowAddLead}>
+                <DialogTrigger asChild>
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Button 
+                      size="default"
+                      className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg shadow-cyan-500/50 hover:shadow-cyan-500/70 transition-all duration-300"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Lead
+                    </Button>
+                  </motion.div>
+                </DialogTrigger>
+              <DialogContent className="sm:max-w-md bg-slate-900 border-white/10">
+                <DialogHeader>
+                  <DialogTitle className="text-white">Add Lead</DialogTitle>
+                  <DialogDescription className="text-gray-400">
+                    Choose how you want to add leads
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Card 
+                      className={`cursor-pointer transition-all border-2 ${
+                        addLeadMethod === 'single' 
+                          ? 'border-cyan-500 bg-cyan-500/10 shadow-lg shadow-cyan-500/20' 
+                          : 'border-white/10 bg-slate-800/50 hover:border-cyan-500/50'
+                      }`}
+                      onClick={() => setAddLeadMethod('single')}
+                    >
+                      <CardHeader>
+                        <CardTitle className="text-lg text-white">Add Single Lead</CardTitle>
+                        <CardDescription className="text-gray-400">Manually enter lead details</CardDescription>
+                      </CardHeader>
+                    </Card>
+                  </motion.div>
+                  
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Card 
+                      className={`cursor-pointer transition-all border-2 ${
+                        addLeadMethod === 'import' 
+                          ? 'border-cyan-500 bg-cyan-500/10 shadow-lg shadow-cyan-500/20' 
+                          : 'border-white/10 bg-slate-800/50 hover:border-cyan-500/50'
+                      }`}
+                      onClick={() => setAddLeadMethod('import')}
+                    >
+                      <CardHeader>
+                        <CardTitle className="text-lg text-white">Import Leads</CardTitle>
+                        <CardDescription className="text-gray-400">Upload CSV file with multiple leads</CardDescription>
+                      </CardHeader>
+                    </Card>
+                  </motion.div>
+                </div>
+                {addLeadMethod && (
+                  <Button 
+                    className="w-full bg-gradient-to-r from-cyan-500 to-blue-600"
+                    onClick={() => {
+                      // Handle add lead
+                      setShowAddLead(false);
+                      setAddLeadMethod(null);
+                    }}
+                  >
+                    {addLeadMethod === 'single' ? 'Open Form' : 'Upload CSV'}
+                  </Button>
+                )}
+              </DialogContent>
+            </Dialog>
+
+              {/* Notifications */}
+              <div className="relative">
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="relative border-white/10 bg-slate-800/50 hover:border-cyan-500/50 hover:bg-slate-800/80 backdrop-blur-xl transition-all duration-300"
+                    onClick={() => setShowNotifications(!showNotifications)}
+                  >
+                    <Bell className="w-5 h-5 text-gray-300" />
+                    {unreadCount > 0 && (
+                      <motion.span
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-red-500 to-rose-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg"
+                      >
+                        {unreadCount}
+                      </motion.span>
+                    )}
+                  </Button>
+                </motion.div>
+
+                {/* Notifications Panel */}
+                <AnimatePresence>
+                  {showNotifications && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                      className="absolute right-0 top-14 w-96 bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50"
+                    >
+                      <div className="p-4 border-b border-white/10 bg-gradient-to-r from-cyan-500/10 to-blue-600/10">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-bold text-white">Notifications</h3>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setUnreadCount(0)}
+                            className="text-xs text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
+                          >
+                            Mark all read
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="max-h-96 overflow-y-auto">
+                        {notifications.map((notification) => (
+                          <motion.div
+                            key={notification.id}
+                            whileHover={{ backgroundColor: 'rgba(6, 182, 212, 0.05)' }}
+                            className={`p-4 border-b border-white/5 cursor-pointer transition-all ${
+                              notification.unread ? 'bg-cyan-500/5' : ''
+                            }`}
+                          >
+                            <div className="flex gap-3">
+                              <div className={`p-2.5 rounded-lg bg-slate-800/50 ${notification.color} shrink-0`}>
+                                <notification.icon className="w-4 h-4" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <h4 className="font-semibold text-sm text-white">{notification.title}</h4>
+                                  {notification.unread && (
+                                    <div className="w-2 h-2 rounded-full bg-cyan-500 flex-shrink-0 mt-1.5"></div>
+                                  )}
+                                </div>
+                                <p className="text-xs text-gray-400 mt-1 line-clamp-2">{notification.message}</p>
+                                <p className="text-xs text-gray-500 mt-2">{notification.time}</p>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                      <div className="p-3 border-t border-white/10 bg-slate-800/30 text-center">
+                        <Button variant="ghost" size="sm" className="text-xs text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10">
+                          View all notifications
+                        </Button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-            </Link>
+
+              {/* Settings */}
+              <Link href="/settings">
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="border-white/10 bg-slate-800/50 hover:border-cyan-500/50 hover:bg-slate-800/80 backdrop-blur-xl transition-all duration-300"
+                  >
+                    <Settings className="w-5 h-5 text-gray-300" />
+                  </Button>
+                </motion.div>
+              </Link>
+            </div>
+          </div>
+
+          {/* Quick Actions - Premium Redesign */}
+          <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            {quickActions.map((action, index) => (
+              <Link key={action.label} href={action.href}>
+                <motion.button
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  whileHover={{ scale: 1.05, y: -4 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="group relative flex flex-col items-center justify-center px-6 py-4 rounded-2xl bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-white/10 hover:border-white/20 backdrop-blur-xl transition-all duration-300 min-w-[120px] overflow-hidden"
+                >
+                  {/* Hover Glow Effect */}
+                  <div className={`absolute inset-0 bg-gradient-to-br ${action.color} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
+                  
+                  <div className={`relative p-3 rounded-xl bg-gradient-to-br ${action.color} mb-3 shadow-lg group-hover:shadow-xl group-hover:shadow-cyan-500/20 transition-all duration-300`}>
+                    <action.icon className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="relative text-xs font-semibold text-gray-300 group-hover:text-white whitespace-nowrap transition-colors duration-300">
+                    {action.label}
+                  </span>
+                </motion.button>
+              </Link>
+            ))}
           </div>
         </div>
-      </nav>
+      </div>
 
-      <div className="container mx-auto px-6 py-8">
-        {/* Header */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <h1 className="text-4xl font-bold text-foreground mb-2">
-            Welcome back, {userName}! 👋
-          </h1>
-          <p className="text-muted-foreground text-lg font-light">
-            Here's what's happening with your sales today
-          </p>
-        </motion.div>
-
-        {/* Key Metrics - 5 Cards */}
+      <div className="relative container mx-auto px-6 py-8">
+        {/* Stats Cards - Premium Design */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          {[
-            {
-              title: 'Total Leads',
-              value: '1,247',
-              change: '+12.5%',
-              trend: 'up',
-              icon: <Users className="w-5 h-5" />,
-              color: 'from-primary to-secondary'
-            },
-            {
-              title: 'Conversion Rate',
-              value: '34.2%',
-              change: '+8.1%',
-              trend: 'up',
-              icon: <Target className="w-5 h-5" />,
-              color: 'from-secondary to-primary'
-            },
-            {
-              title: 'Active Campaigns',
-              value: '8',
-              change: '+2',
-              trend: 'up',
-              icon: <Zap className="w-5 h-5" />,
-              color: 'from-primary/80 to-secondary/80'
-            },
-            {
-              title: 'Follow-ups Due',
-              value: '23',
-              change: '-5',
-              trend: 'down',
-              icon: <Clock className="w-5 h-5" />,
-              color: 'from-secondary/80 to-primary/80'
-            },
-            {
-              title: 'Win Rate',
-              value: '67%',
-              change: '+15%',
-              trend: 'up',
-              icon: <Award className="w-5 h-5" />,
-              color: 'from-primary to-secondary'
-            }
-          ].map((metric, index) => (
+          {stats.map((stat, index) => (
             <motion.div
-              key={index}
+              key={stat.title}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
+              whileHover={{ y: -8, scale: 1.02 }}
             >
-              <Card className="bg-card/70 backdrop-blur-sm border-border hover:border-primary/40 transition-all duration-300 shadow-xl hover:shadow-2xl hover:shadow-primary/20 group hover:scale-105">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardDescription className="text-muted-foreground font-light text-sm">{metric.title}</CardDescription>
-                  <div className={`p-2 rounded-xl bg-gradient-to-br ${metric.color} text-white shadow-lg shadow-primary/30 group-hover:shadow-xl group-hover:shadow-primary/40 transition-all duration-300 group-hover:scale-110`}>
-                    {metric.icon}
+              <Card className="relative overflow-hidden border-white/10 bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl hover:border-white/20 transition-all duration-300 group">
+                {/* Gradient Overlay */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${stat.lightColor} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
+                
+                {/* Glow Effect on Hover */}
+                <div className={`absolute -inset-1 bg-gradient-to-br ${stat.color} opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300`} />
+                
+                <CardContent className="relative p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`p-3 rounded-xl bg-gradient-to-br ${stat.color} shadow-lg group-hover:shadow-xl transition-all duration-300`}>
+                      <stat.icon className="w-6 h-6 text-white" />
+                    </div>
+                    <motion.div 
+                      whileHover={{ scale: 1.1 }}
+                      className={`flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                        stat.trending === 'up' 
+                          ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                          : 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                      }`}
+                    >
+                      {stat.trending === 'up' ? (
+                        <TrendingUp className="w-3.5 h-3.5 mr-1" />
+                      ) : (
+                        <TrendingDown className="w-3.5 h-3.5 mr-1" />
+                      )}
+                      {stat.change}
+                    </motion.div>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-foreground mb-1 group-hover:text-primary transition-colors">{metric.value}</div>
-                  <div className="flex items-center gap-1 text-xs">
-                    {metric.trend === 'up' ? (
-                      <ArrowUpRight className="w-3 h-3 text-secondary" />
-                    ) : (
-                      <ArrowUpRight className="w-3 h-3 text-red-500 rotate-90" />
-                    )}
-                    <span className={metric.trend === 'up' ? 'text-secondary font-medium' : 'text-red-500 font-medium'}>
-                      {metric.change}
-                    </span>
-                    <span className="text-muted-foreground font-light">vs last month</span>
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-400 mb-2">{stat.title}</h3>
+                    <p className="text-3xl font-bold text-white mb-1 tracking-tight">{stat.value}</p>
+                    <p className="text-xs text-gray-500">vs last month</p>
                   </div>
                 </CardContent>
               </Card>
@@ -1033,557 +643,222 @@ P.S. Here's a case study showing how we helped a company similar to yours increa
           ))}
         </div>
 
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-          className="mb-8"
-        >
-          <Card className="bg-card/70 backdrop-blur-sm border-border shadow-2xl shadow-primary/10">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <Zap className="w-6 h-6 text-primary" />
-                <div>
-                  <CardTitle className="text-2xl">Quick Actions</CardTitle>
-                  <CardDescription>Fast access to your most used tools</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                {/* Send Email */}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowQuickEmail(true)}
-                  className="flex flex-col items-center gap-3 p-6 rounded-xl bg-gradient-to-br from-primary/10 to-secondary/10 border-2 border-primary/20 hover:border-primary/50 transition-all duration-300 group hover:shadow-xl hover:shadow-primary/30"
-                >
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white shadow-lg shadow-primary/40 group-hover:shadow-xl group-hover:shadow-primary/50 transition-all duration-300 group-hover:scale-110">
-                    <Mail className="w-7 h-7" />
-                  </div>
-                  <span className="text-sm font-semibold text-foreground text-center">Send Email</span>
-                </motion.button>
-
-                {/* Cold Call */}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowQuickCall(true)}
-                  className="flex flex-col items-center gap-3 p-6 rounded-xl bg-gradient-to-br from-primary/10 to-secondary/10 border-2 border-primary/20 hover:border-primary/50 transition-all duration-300 group hover:shadow-xl hover:shadow-primary/30"
-                >
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-white shadow-lg shadow-green-500/40 group-hover:shadow-xl group-hover:shadow-green-500/50 transition-all duration-300 group-hover:scale-110">
-                    <Phone className="w-7 h-7" />
-                  </div>
-                  <span className="text-sm font-semibold text-foreground text-center">Cold Call</span>
-                </motion.button>
-
-                {/* Schedule Meeting */}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowQuickMeeting(true)}
-                  className="flex flex-col items-center gap-3 p-6 rounded-xl bg-gradient-to-br from-primary/10 to-secondary/10 border-2 border-primary/20 hover:border-primary/50 transition-all duration-300 group hover:shadow-xl hover:shadow-primary/30"
-                >
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/40 group-hover:shadow-xl group-hover:shadow-blue-500/50 transition-all duration-300 group-hover:scale-110">
-                    <Video className="w-7 h-7" />
-                  </div>
-                  <span className="text-sm font-semibold text-foreground text-center">Schedule Meeting</span>
-                </motion.button>
-
-                {/* Assign Task */}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowQuickTask(true)}
-                  className="flex flex-col items-center gap-3 p-6 rounded-xl bg-gradient-to-br from-primary/10 to-secondary/10 border-2 border-primary/20 hover:border-primary/50 transition-all duration-300 group hover:shadow-xl hover:shadow-primary/30"
-                >
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white shadow-lg shadow-purple-500/40 group-hover:shadow-xl group-hover:shadow-purple-500/50 transition-all duration-300 group-hover:scale-110">
-                    <User className="w-7 h-7" />
-                  </div>
-                  <span className="text-sm font-semibold text-foreground text-center">Assign Task</span>
-                </motion.button>
-
-                {/* Email Campaign */}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowQuickCampaign(true)}
-                  className="flex flex-col items-center gap-3 p-6 rounded-xl bg-gradient-to-br from-primary/10 to-secondary/10 border-2 border-primary/20 hover:border-primary/50 transition-all duration-300 group hover:shadow-xl hover:shadow-primary/30"
-                >
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/40 group-hover:shadow-xl group-hover:shadow-orange-500/50 transition-all duration-300 group-hover:scale-110">
-                    <Send className="w-7 h-7" />
-                  </div>
-                  <span className="text-sm font-semibold text-foreground text-center">Email Campaign</span>
-                </motion.button>
-
-                {/* Add Lead */}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowAddLead(true)}
-                  className="flex flex-col items-center gap-3 p-6 rounded-xl bg-gradient-to-br from-primary/10 to-secondary/10 border-2 border-primary/20 hover:border-primary/50 transition-all duration-300 group hover:shadow-xl hover:shadow-primary/30"
-                >
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white shadow-lg shadow-primary/40 group-hover:shadow-xl group-hover:shadow-primary/50 transition-all duration-300 group-hover:scale-110">
-                    <Plus className="w-7 h-7" />
-                  </div>
-                  <span className="text-sm font-semibold text-foreground text-center">Add Lead</span>
-                </motion.button>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* To-Do List & AI Insights */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* To-Do List */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* To-Do List - Premium */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.6 }}
           >
-            <Card className="bg-card/70 backdrop-blur-sm border-border shadow-xl hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 h-full">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-foreground flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-primary" />
-                    To-Do List
-                  </CardTitle>
-                  <Badge className="bg-primary/20 text-primary border-primary/30">
-                    {todos.filter(t => !t.completed).length} pending
-                  </Badge>
+            <Card className="border-white/10 bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl hover:border-white/20 transition-all duration-300 group relative overflow-hidden">
+              <div className="absolute -inset-1 bg-gradient-to-br from-purple-500/20 to-pink-600/20 opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-300" />
+              <CardHeader className="relative border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600">
+                    <Check className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-white">To-Do List</CardTitle>
+                    <CardDescription className="text-gray-400 text-sm">Your pending tasks</CardDescription>
+                  </div>
                 </div>
-                <CardDescription className="font-light">Manage your daily tasks and priorities</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Add a new task..."
-                    value={newTodo}
-                    onChange={(e) => setNewTodo(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && addTodo()}
-                    className="bg-background/50 border-2 border-border hover:border-primary/30 focus:border-primary/50"
-                  />
-                  <Button 
-                    onClick={addTodo}
-                    className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 shadow-lg shadow-primary/30"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+              <CardContent className="relative p-6">
+                <div className="space-y-3 mb-4">
                   {todos.map((todo) => (
-                    <motion.div
+                    <motion.div 
                       key={todo.id}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-card/50 backdrop-blur-sm border border-border hover:border-primary/30 transition-all group"
+                      whileHover={{ x: 4 }}
+                      className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border border-white/10 hover:border-white/20 hover:bg-slate-800/70 transition-all duration-200"
                     >
                       <input
                         type="checkbox"
                         checked={todo.completed}
                         onChange={() => toggleTodo(todo.id)}
-                        className="w-4 h-4 rounded border-2 border-primary text-primary focus:ring-primary cursor-pointer"
+                        className="w-4 h-4 rounded border-cyan-500 accent-cyan-500"
                       />
-                      <span className={`flex-1 ${todo.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                        {todo.text}
-                      </span>
-                      {todo.dueDate && (
-                        <Badge variant="outline" className="text-xs border-primary/30 text-primary">
-                          {todo.dueDate}
-                        </Badge>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deleteTodo(todo.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/10 hover:text-red-500"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
+                      <div className="flex-1">
+                        <p className={`text-sm font-medium ${todo.completed ? 'line-through text-gray-500' : 'text-white'}`}>
+                          {todo.text}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">{todo.date}</p>
+                      </div>
                     </motion.div>
                   ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add new task..."
+                    value={newTodo}
+                    onChange={(e) => setNewTodo(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && addTodo()}
+                    className="flex-1 bg-slate-900/50 border-white/10 text-white placeholder:text-gray-500 focus:border-cyan-500"
+                  />
+                  <Button onClick={addTodo} size="sm" className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700">
+                    <Plus className="w-4 h-4" />
+                  </Button>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
 
-          {/* AI Insights */}
+          {/* AI Insights - Premium */}
           <motion.div
-            initial={{ opacity: 0, x: 20 }}
+            initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.4 }}
+            transition={{ delay: 0.7 }}
+            className="lg:col-span-2"
           >
-            <Card className="bg-card/70 backdrop-blur-sm border-border shadow-xl hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 h-full">
-              <CardHeader>
-                <CardTitle className="text-foreground flex items-center gap-2">
-                  <Bot className="w-5 h-5 text-secondary" />
-                  AI Insights
-                </CardTitle>
-                <CardDescription className="font-light">Intelligent recommendations from your data</CardDescription>
+            <Card className="border-white/10 bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl hover:border-white/20 transition-all duration-300 group relative overflow-hidden">
+              <div className="absolute -inset-1 bg-gradient-to-br from-cyan-500/20 to-blue-600/20 opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-300" />
+              <CardHeader className="relative border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600">
+                    <Sparkles className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-white">AI Insights</CardTitle>
+                    <CardDescription className="text-gray-400 text-sm">Smart recommendations for your sales</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {[
-                  {
-                    type: 'success',
-                    title: 'High Conversion Opportunity',
-                    description: '3 leads with 90+ scores haven\'t been contacted in 48 hours',
-                    action: 'Review Now',
-                    icon: <TrendingUp className="w-4 h-4" />
-                  },
-                  {
-                    type: 'warning',
-                    title: 'Follow-up Required',
-                    description: '12 leads are waiting for follow-up emails this week',
-                    action: 'Send Emails',
-                    icon: <Mail className="w-4 h-4" />
-                  },
-                  {
-                    type: 'info',
-                    title: 'Best Time to Call',
-                    description: 'Optimal calling window: Today 2-4 PM based on historical data',
-                    action: 'View Schedule',
-                    icon: <Phone className="w-4 h-4" />
-                  },
-                  {
-                    type: 'success',
-                    title: 'Pipeline Health',
-                    description: 'Your pipeline is 23% above target for this quarter',
-                    action: 'View Details',
-                    icon: <Target className="w-4 h-4" />
-                  }
-                ].map((insight, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 + index * 0.1 }}
-                    className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 hover:border-primary/40 transition-all group cursor-pointer"
+              <CardContent className="relative p-6">
+                <div className="space-y-4">
+                  <motion.div 
+                    whileHover={{ scale: 1.02, x: 4 }}
+                    className="p-5 rounded-xl bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/20 hover:border-red-500/40 transition-all duration-200 relative overflow-hidden group"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-lg bg-gradient-to-br from-primary to-secondary text-white shadow-lg shadow-primary/30">
-                        {insight.icon}
+                    <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 to-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                    <div className="relative flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-red-500/20 shrink-0">
+                        <Zap className="w-4 h-4 text-red-400" />
                       </div>
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-foreground mb-1">{insight.title}</h4>
-                        <p className="text-sm text-muted-foreground font-light mb-2">{insight.description}</p>
-                        <Button variant="ghost" size="sm" className="text-primary hover:text-secondary hover:bg-primary/10 p-0 h-auto font-semibold">
-                          {insight.action} →
-                        </Button>
+                      <div>
+                        <h4 className="font-semibold text-white mb-1.5 flex items-center gap-2">
+                          High Priority
+                          <span className="px-2 py-0.5 text-xs font-bold bg-red-500/20 text-red-400 rounded-full border border-red-500/30">Urgent</span>
+                        </h4>
+                        <p className="text-sm text-gray-300 leading-relaxed">3 hot leads haven't been contacted in 48 hours. Follow up now to maintain engagement.</p>
                       </div>
                     </div>
                   </motion.div>
-                ))}
+                  
+                  <motion.div 
+                    whileHover={{ scale: 1.02, x: 4 }}
+                    className="p-5 rounded-xl bg-slate-800/50 border border-white/10 hover:border-white/20 hover:bg-slate-800/70 transition-all duration-200"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-blue-500/20 shrink-0">
+                        <TrendingUp className="w-4 h-4 text-blue-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-white mb-1.5">Optimization Tip</h4>
+                        <p className="text-sm text-gray-300 leading-relaxed">Your email open rate is 34%. Try personalizing subject lines for better engagement.</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                  
+                  <motion.div 
+                    whileHover={{ scale: 1.02, x: 4 }}
+                    className="p-5 rounded-xl bg-slate-800/50 border border-white/10 hover:border-white/20 hover:bg-slate-800/70 transition-all duration-200"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-green-500/20 shrink-0">
+                        <Clock className="w-4 h-4 text-green-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-white mb-1.5">Best Time to Contact</h4>
+                        <p className="text-sm text-gray-300 leading-relaxed">Based on your data, Tuesdays at 10 AM have the highest response rate.</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
         </div>
 
-        {/* Leads Table */}
+        {/* Active Leads Table - Premium */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
+          transition={{ delay: 0.8 }}
+          className="mt-8"
         >
-          <Card className="bg-card/70 backdrop-blur-xl border-border shadow-2xl">
-            <CardHeader>
+          <Card className="border-white/10 bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl hover:border-white/20 transition-all duration-300 group relative overflow-hidden">
+            <div className="absolute -inset-1 bg-gradient-to-br from-violet-500/20 to-purple-600/20 opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-300" />
+            <CardHeader className="relative border-b border-white/10">
               <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-foreground text-2xl">Active Leads</CardTitle>
-                  <CardDescription className="font-light">Manage and track all your sales leads</CardDescription>
-                </div>
-                <div className="flex gap-3">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search leads..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 bg-background/50 border-2 border-border hover:border-primary/30 focus:border-primary/50 w-64"
-                    />
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600">
+                    <Users className="w-4 h-4 text-white" />
                   </div>
-                  <Button variant="outline" className="border-primary/20 hover:bg-primary/10">
-                    <Filter className="w-4 h-4 mr-2" />
-                    Filter
-                  </Button>
-                  <Dialog open={showAddLead} onOpenChange={setShowAddLead}>
-                    <DialogTrigger asChild>
-                      <Button className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all duration-300">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Lead
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="bg-card border-border max-w-2xl">
-                      <DialogHeader>
-                        <DialogTitle>Add New Lead</DialogTitle>
-                        <DialogDescription>Enter the lead information below</DialogDescription>
-                      </DialogHeader>
-                      <div className="grid grid-cols-2 gap-4 py-4">
-                        <div className="space-y-2">
-                          <Label>Name</Label>
-                          <Input className="bg-background/50 border-2 border-border" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Company</Label>
-                          <Input className="bg-background/50 border-2 border-border" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Email</Label>
-                          <Input type="email" className="bg-background/50 border-2 border-border" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Phone</Label>
-                          <Input className="bg-background/50 border-2 border-border" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>LinkedIn URL</Label>
-                          <Input className="bg-background/50 border-2 border-border" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Source</Label>
-                          <Select>
-                            <SelectTrigger className="bg-background/50 border-2 border-border">
-                              <SelectValue placeholder="Select source" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="LinkedIn_Scrape">LinkedIn Scrape</SelectItem>
-                              <SelectItem value="Website">Website</SelectItem>
-                              <SelectItem value="CSV_Import">CSV Import</SelectItem>
-                              <SelectItem value="Manual_Entry">Manual Entry</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Priority</Label>
-                          <Select>
-                            <SelectTrigger className="bg-background/50 border-2 border-border">
-                              <SelectValue placeholder="Select priority" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="High">High</SelectItem>
-                              <SelectItem value="Medium">Medium</SelectItem>
-                              <SelectItem value="Low">Low</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Assigned To</Label>
-                          <Select>
-                            <SelectTrigger className="bg-background/50 border-2 border-border">
-                              <SelectValue placeholder="Select assignee" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="You">You</SelectItem>
-                              <SelectItem value="Team">Team</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="flex justify-end gap-3">
-                        <Button variant="outline" onClick={() => setShowAddLead(false)}>Cancel</Button>
-                        <Button className="bg-gradient-to-r from-primary to-secondary">Add Lead</Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                  <div>
+                    <CardTitle className="text-white">Active Leads</CardTitle>
+                    <CardDescription className="text-gray-400 text-sm">Recent lead activity and status</CardDescription>
+                  </div>
                 </div>
+                <Link href="/prospects">
+                  <Button variant="outline" size="sm" className="border-white/10 bg-slate-800/50 text-white hover:border-cyan-500/50 hover:bg-cyan-500/10 transition-all duration-300">
+                    View All <ArrowUpRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </Link>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="relative p-0">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Lead ID</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Name</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Company</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Email</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Phone</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Source</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Stage</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Status</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Priority</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Assigned</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Score</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Actions</th>
+                    <tr className="border-b border-white/10 bg-slate-800/30">
+                      <th className="text-left py-4 px-6 text-xs font-semibold text-gray-400 uppercase tracking-wider">Name</th>
+                      <th className="text-left py-4 px-6 text-xs font-semibold text-gray-400 uppercase tracking-wider">Company</th>
+                      <th className="text-left py-4 px-6 text-xs font-semibold text-gray-400 uppercase tracking-wider">Email</th>
+                      <th className="text-left py-4 px-6 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                      <th className="text-left py-4 px-6 text-xs font-semibold text-gray-400 uppercase tracking-wider">Last Contact</th>
+                      <th className="text-right py-4 px-6 text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredLeads.map((lead) => (
-                      <tr 
-                        key={lead.lead_id}
-                        className="border-b border-border/50 hover:bg-card/50 transition-colors cursor-pointer"
-                        onClick={() => {
-                          setSelectedLead(lead);
-                          setShowLeadDetail(true);
-                        }}
+                    {activeLeads.map((lead, index) => (
+                      <motion.tr 
+                        key={index} 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        whileHover={{ backgroundColor: 'rgba(6, 182, 212, 0.03)' }}
+                        className="border-b border-white/5 transition-all duration-200 cursor-pointer"
                       >
-                        <td className="py-3 px-4 text-sm">
-                          <span className="font-mono text-primary">{lead.lead_id}</span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-xs font-semibold shadow-lg shadow-primary/30">
-                              {lead.name.charAt(0)}
+                        <td className="py-4 px-6">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-semibold">
+                              {lead.name.split(' ').map(n => n[0]).join('')}
                             </div>
-                            <span className="text-sm font-medium text-foreground">{lead.name}</span>
+                            <span className="text-sm font-semibold text-white">{lead.name}</span>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-sm text-foreground">{lead.company}</td>
-                        <td className="py-3 px-4 text-sm text-muted-foreground">{lead.email}</td>
-                        <td className="py-3 px-4 text-sm text-muted-foreground">{lead.phone}</td>
-                        <td className="py-3 px-4">
-                          <Badge variant="outline" className="text-xs border-primary/30 text-primary">
-                            {lead.source.replace('_', ' ')}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4">
-                          <Badge className={`text-xs ${
-                            lead.offering === 'Won' ? 'bg-secondary text-white' :
-                            lead.offering === 'Lost' ? 'bg-red-500 text-white' :
-                            'bg-primary/20 text-primary border-primary/30'
+                        <td className="py-4 px-6 text-sm text-gray-300">{lead.company}</td>
+                        <td className="py-4 px-6 text-sm text-gray-400">{lead.email}</td>
+                        <td className="py-4 px-6">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${
+                            lead.status === 'Hot' 
+                              ? 'bg-red-500/10 text-red-400 border-red-500/30' :
+                            lead.status === 'Warm' 
+                              ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' :
+                              'bg-blue-500/10 text-blue-400 border-blue-500/30'
                           }`}>
-                            {lead.offering}
-                          </Badge>
+                            {lead.status}
+                          </span>
                         </td>
-                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                          <Select value={lead.status} onValueChange={(value) => updateLeadStatus(lead.lead_id, 'status', value)}>
-                            <SelectTrigger className="h-8 text-xs border-border bg-background/50">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Active">Active</SelectItem>
-                              <SelectItem value="Inactive">Inactive</SelectItem>
-                              <SelectItem value="On Hold">On Hold</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="py-3 px-4">
-                          <Badge className={`text-xs ${
-                            lead.priority === 'High' ? 'bg-red-500 text-white' :
-                            lead.priority === 'Medium' ? 'bg-secondary text-white' :
-                            'bg-primary/20 text-primary'
-                          }`}>
-                            {lead.priority}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                          <Select value={lead.assigned_to} onValueChange={(value) => updateLeadStatus(lead.lead_id, 'assigned_to', value)}>
-                            <SelectTrigger className="h-8 text-xs border-border bg-background/50">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="You">You</SelectItem>
-                              <SelectItem value="Team">Team</SelectItem>
-                              <SelectItem value="Sales">Sales</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <Progress value={lead.lead_score} className="h-2 w-16" />
-                            <span className="text-sm font-semibold text-foreground">{lead.lead_score}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="sm" className="hover:bg-primary/10">
-                            <MoreVertical className="w-4 h-4" />
+                        <td className="py-4 px-6 text-sm text-gray-400">{lead.lastContact}</td>
+                        <td className="py-4 px-6 text-right">
+                          <Button variant="ghost" size="sm" className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10">
+                            Contact
+                            <ArrowUpRight className="w-3.5 h-3.5 ml-1" />
                           </Button>
                         </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Team Tracker Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-        >
-          <Card className="bg-card/70 backdrop-blur-sm border-border shadow-2xl shadow-primary/10">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Users className="w-6 h-6 text-primary" />
-                  <div>
-                    <CardTitle className="text-2xl">Team Tracker</CardTitle>
-                    <CardDescription>Monitor your team's activity and performance</CardDescription>
-                  </div>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-xl border border-border overflow-hidden bg-background/30">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-primary/20 to-secondary/20 border-b border-border">
-                      <th className="text-left py-4 px-4 text-sm font-semibold text-foreground">Team Member</th>
-                      <th className="text-left py-4 px-4 text-sm font-semibold text-foreground">Role</th>
-                      <th className="text-left py-4 px-4 text-sm font-semibold text-foreground">Status</th>
-                      <th className="text-left py-4 px-4 text-sm font-semibold text-foreground">Current Task</th>
-                      <th className="text-left py-4 px-4 text-sm font-semibold text-foreground">Assigned</th>
-                      <th className="text-left py-4 px-4 text-sm font-semibold text-foreground">Completed</th>
-                      <th className="text-left py-4 px-4 text-sm font-semibold text-foreground">Pending</th>
-                      <th className="text-left py-4 px-4 text-sm font-semibold text-foreground">In Progress</th>
-                      <th className="text-left py-4 px-4 text-sm font-semibold text-foreground">Completion %</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {teamMembers.map((member) => (
-                      <tr
-                        key={member.id}
-                        className="border-b border-border/50 hover:bg-card/50 transition-colors cursor-pointer"
-                        onClick={() => {
-                          setSelectedTeamMember(member);
-                          setShowTeamDetail(true);
-                        }}
-                      >
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-semibold shadow-lg shadow-primary/30">
-                              {member.avatar}
-                            </div>
-                            <div>
-                              <p className="font-medium text-foreground">{member.name}</p>
-                              <p className="text-xs text-muted-foreground">{member.email}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4 text-sm text-foreground">{member.role}</td>
-                        <td className="py-4 px-4">
-                          <Badge className={`${
-                            member.status === 'Active' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
-                            member.status === 'Away' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
-                            'bg-gray-500/20 text-gray-400 border-gray-500/30'
-                          } border shadow-md`}>
-                            {member.status}
-                          </Badge>
-                        </td>
-                        <td className="py-4 px-4 text-sm text-muted-foreground max-w-xs truncate">{member.currentTask}</td>
-                        <td className="py-4 px-4 text-sm text-center font-semibold text-foreground">{member.tasksAssigned}</td>
-                        <td className="py-4 px-4 text-sm text-center font-semibold text-green-400">{member.tasksCompleted}</td>
-                        <td className="py-4 px-4 text-sm text-center font-semibold text-yellow-400">{member.tasksPending}</td>
-                        <td className="py-4 px-4 text-sm text-center font-semibold text-blue-400">{member.tasksInProgress}</td>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-2">
-                            <Progress 
-                              value={performancePeriod === 'daily' ? member.dailyCompletion : 
-                                     performancePeriod === 'weekly' ? member.weeklyCompletion : 
-                                     member.monthlyCompletion} 
-                              className="h-2 flex-1"
-                            />
-                            <span className="text-sm font-semibold text-foreground w-12 text-right">
-                              {performancePeriod === 'daily' ? member.dailyCompletion : 
-                               performancePeriod === 'weekly' ? member.weeklyCompletion : 
-                               member.monthlyCompletion}%
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
+                      </motion.tr>
                     ))}
                   </tbody>
                 </table>
@@ -1593,1503 +868,226 @@ P.S. Here's a case study showing how we helped a company similar to yours increa
         </motion.div>
       </div>
 
-      {/* Lead Detail Dialog */}
-      <Dialog open={showLeadDetail} onOpenChange={setShowLeadDetail}>
-        <DialogContent className="bg-card border-border max-w-7xl max-h-[90vh] overflow-y-auto">
-          {selectedLead && (
-            <>
-              <DialogHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-2xl font-bold shadow-2xl shadow-primary/40">
-                      {selectedLead.name.charAt(0)}
-                    </div>
-                    <div>
-                      <DialogTitle className="text-2xl">{selectedLead.name}</DialogTitle>
-                      <DialogDescription className="text-lg">{selectedLead.company}</DialogDescription>
-                    </div>
-                  </div>
-                  <Badge className={`${
-                    selectedLead.priority === 'High' ? 'bg-red-500 text-white' :
-                    selectedLead.priority === 'Medium' ? 'bg-secondary text-white' :
-                    'bg-primary/20 text-primary'
-                  }`}>
-                    {selectedLead.priority} Priority
-                  </Badge>
-                </div>
-              </DialogHeader>
-
-              <Tabs defaultValue="overview" className="mt-6">
-                <TabsList className="grid w-full grid-cols-5 bg-card/70 backdrop-blur-sm border border-border">
-                  <TabsTrigger value="overview" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-secondary data-[state=active]:text-white">
-                    <User className="w-4 h-4 mr-2" />
-                    Overview
-                  </TabsTrigger>
-                  <TabsTrigger value="email" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-secondary data-[state=active]:text-white">
-                    <Mail className="w-4 h-4 mr-2" />
-                    Email
-                  </TabsTrigger>
-                  <TabsTrigger value="meeting" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-secondary data-[state=active]:text-white">
-                    <Video className="w-4 h-4 mr-2" />
-                    Meeting
-                  </TabsTrigger>
-                  <TabsTrigger value="calling" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-secondary data-[state=active]:text-white">
-                    <Phone className="w-4 h-4 mr-2" />
-                    Calling
-                  </TabsTrigger>
-                  <TabsTrigger value="activity" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-secondary data-[state=active]:text-white">
-                    <Clock className="w-4 h-4 mr-2" />
-                    Activity
-                  </TabsTrigger>
-                </TabsList>
-
-                {/* Overview Tab */}
-                <TabsContent value="overview" className="space-y-6 mt-6">
-                  <Card className="bg-card/50 backdrop-blur-sm border-border">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <User className="w-5 h-5 text-primary" />
-                        Contact Information
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-muted-foreground text-sm">Email</Label>
-                        <div className="flex items-center gap-2">
-                          <Mail className="w-4 h-4 text-primary" />
-                          <span className="text-foreground">{selectedLead.email}</span>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-muted-foreground text-sm">Phone</Label>
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-primary" />
-                          <span className="text-foreground">{selectedLead.phone}</span>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-muted-foreground text-sm">LinkedIn</Label>
-                        <a href={selectedLead.linkedin_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:text-secondary">
-                          <Linkedin className="w-4 h-4" />
-                          <span>View Profile</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-muted-foreground text-sm">Lead Score</Label>
-                        <div className="flex items-center gap-2">
-                          <Progress value={selectedLead.lead_score} className="h-2 flex-1" />
-                          <span className="text-foreground font-bold">{selectedLead.lead_score}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-card/50 backdrop-blur-sm border-border">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Pencil className="w-5 h-5 text-primary" />
-                        Notes
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Textarea
-                        placeholder="Add notes about this lead..."
-                        defaultValue={selectedLead.notes}
-                        className="bg-background/50 border-2 border-border min-h-[100px]"
-                      />
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-card/50 backdrop-blur-sm border-border">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Target className="w-5 h-5 text-primary" />
-                        Next Steps
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Textarea
-                        placeholder="Define next steps..."
-                        defaultValue={selectedLead.next_steps}
-                        className="bg-background/50 border-2 border-border min-h-[80px]"
-                      />
-                      <Button className="mt-4 bg-gradient-to-r from-primary to-secondary">
-                        Update
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Email Tab */}
-                <TabsContent value="email" className="space-y-6 mt-6">
-                  <Card className="bg-card/50 backdrop-blur-sm border-border">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                          <Mail className="w-5 h-5 text-primary" />
-                          Compose Email
-                        </CardTitle>
-                        <Button 
-                          onClick={generateEmailTemplate}
-                          disabled={isGeneratingEmail}
-                          variant="outline"
-                          className="border-primary/20 hover:bg-primary/10"
-                        >
-                          <Bot className="w-4 h-4 mr-2" />
-                          {isGeneratingEmail ? 'Generating...' : 'Generate Template'}
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {showEmailPrompt && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          className="space-y-3 p-4 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/30"
-                        >
-                          <div className="flex items-center gap-2 mb-2">
-                            <Bot className="w-5 h-5 text-primary" />
-                            <Label className="text-base font-semibold text-foreground">AI Prompt</Label>
-                          </div>
-                          <Textarea
-                            placeholder="Describe what you want the email to focus on... (e.g., 'Emphasize ROI and cost savings' or 'Focus on technical capabilities')"
-                            value={emailPrompt}
-                            onChange={(e) => setEmailPrompt(e.target.value)}
-                            className="bg-background/50 border-2 border-border min-h-[100px]"
-                          />
-                          <div className="flex gap-2">
-                            <Button 
-                              onClick={generateEmailTemplate}
-                              disabled={isGeneratingEmail}
-                              className="bg-gradient-to-r from-primary to-secondary"
-                            >
-                              {isGeneratingEmail ? 'Generating...' : 'Generate'}
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              onClick={() => {
-                                setShowEmailPrompt(false);
-                                setEmailPrompt('');
-                              }}
-                              className="border-primary/20"
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </motion.div>
-                      )}
-                      <div className="space-y-2">
-                        <Label>To</Label>
-                        <Input value={selectedLead.email} disabled className="bg-background/50 border-2 border-border" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Subject</Label>
-                        <Input placeholder="Email subject..." className="bg-background/50 border-2 border-border" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Message</Label>
-                        <Textarea
-                          placeholder="Write your email..."
-                          value={emailTemplate}
-                          onChange={(e) => setEmailTemplate(e.target.value)}
-                          className="bg-background/50 border-2 border-border min-h-[300px]"
-                        />
-                      </div>
-                      <div className="flex gap-3">
-                        <Button className="bg-gradient-to-r from-primary to-secondary flex-1">
-                          <Send className="w-4 h-4 mr-2" />
-                          Send Email
-                        </Button>
-                        <Button variant="outline" className="border-primary/20">
-                          Save Draft
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Meeting Tab */}
-                <TabsContent value="meeting" className="space-y-6 mt-6">
-                  <Card className="bg-card/50 backdrop-blur-sm border-border">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                          <Video className="w-5 h-5 text-primary" />
-                          Schedule Meeting
-                        </CardTitle>
-                        <Button 
-                          onClick={generateMeetingAgenda}
-                          variant="outline"
-                          className="border-primary/20 hover:bg-primary/10"
-                        >
-                          <Bot className="w-4 h-4 mr-2" />
-                          Generate Agenda
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {showMeetingPrompt && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          className="space-y-3 p-4 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/30"
-                        >
-                          <div className="flex items-center gap-2 mb-2">
-                            <Bot className="w-5 h-5 text-primary" />
-                            <Label className="text-base font-semibold text-foreground">AI Prompt</Label>
-                          </div>
-                          <Textarea
-                            placeholder="Describe what you want to focus on in the meeting... (e.g., 'Include discussion about integrations' or 'Focus on security and compliance')"
-                            value={meetingPrompt}
-                            onChange={(e) => setMeetingPrompt(e.target.value)}
-                            className="bg-background/50 border-2 border-border min-h-[100px]"
-                          />
-                          <div className="flex gap-2">
-                            <Button 
-                              onClick={generateMeetingAgenda}
-                              className="bg-gradient-to-r from-primary to-secondary"
-                            >
-                              Generate
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              onClick={() => {
-                                setShowMeetingPrompt(false);
-                                setMeetingPrompt('');
-                              }}
-                              className="border-primary/20"
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </motion.div>
-                      )}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Meeting Title</Label>
-                          <Input placeholder="Product Demo" className="bg-background/50 border-2 border-border" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Platform</Label>
-                          <Select>
-                            <SelectTrigger className="bg-background/50 border-2 border-border">
-                              <SelectValue placeholder="Select platform" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="zoom">Zoom</SelectItem>
-                              <SelectItem value="gmeet">Google Meet</SelectItem>
-                              <SelectItem value="teams">Microsoft Teams</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Date</Label>
-                          <Input type="date" className="bg-background/50 border-2 border-border" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Time</Label>
-                          <Input type="time" className="bg-background/50 border-2 border-border" />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Attendees</Label>
-                        <Input 
-                          placeholder={`${selectedLead.email}, team@company.com`}
-                          className="bg-background/50 border-2 border-border"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Agenda / Description</Label>
-                        <Textarea
-                          placeholder="Meeting agenda..."
-                          value={meetingAgenda}
-                          onChange={(e) => setMeetingAgenda(e.target.value)}
-                          className="bg-background/50 border-2 border-border min-h-[200px]"
-                        />
-                      </div>
-                      <Button className="bg-gradient-to-r from-primary to-secondary w-full">
-                        <Calendar className="w-4 h-4 mr-2" />
-                        Schedule Meeting
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-card/50 backdrop-blur-sm border-border">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-primary" />
-                        Meeting Notes
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-muted-foreground text-sm mb-4">Notes from previous meetings will appear here</p>
-                      <div className="space-y-3">
-                        <div className="p-4 rounded-lg bg-card border border-border">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-semibold text-foreground">Product Demo Call</span>
-                            <span className="text-xs text-muted-foreground">Nov 8, 2025</span>
-                          </div>
-                          <p className="text-sm text-muted-foreground">Discussed enterprise features and pricing. Follow-up: Send proposal by Nov 12.</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Cold Calling Tab */}
-                <TabsContent value="calling" className="space-y-6 mt-6">
-                  <Card className="bg-card/50 backdrop-blur-sm border-border">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Mic className="w-5 h-5 text-primary" />
-                        Call Transcript & Summary
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="p-4 rounded-lg bg-background/50 border border-border">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-sm font-semibold text-foreground">Last Call: Nov 10, 2025 - 15 min</span>
-                          <Badge className="bg-secondary text-white">Completed</Badge>
-                        </div>
-                        <div className="space-y-2">
-                          <h4 className="text-sm font-semibold text-foreground">Summary</h4>
-                          <p className="text-sm text-muted-foreground">
-                            Discussed current sales challenges. Lead is interested in automation features. 
-                            Expressed concerns about implementation timeline. Next step: Technical demo scheduled.
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-card/50 backdrop-blur-sm border-border">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Pencil className="w-5 h-5 text-primary" />
-                        Call Notes
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <Textarea
-                        placeholder="Add notes from your call..."
-                        className="bg-background/50 border-2 border-border min-h-[150px]"
-                      />
-                      <Button className="bg-gradient-to-r from-primary to-secondary">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Note
-                      </Button>
-                      
-                      <div className="space-y-3 mt-6">
-                        <h4 className="text-sm font-semibold text-foreground">Previous Notes</h4>
-                        <div className="p-3 rounded-lg bg-card border border-border">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs text-muted-foreground">Nov 10, 2025 - 2:30 PM</span>
-                          </div>
-                          <p className="text-sm text-foreground">Lead mentioned budget approval needed from CFO. Follow up next week.</p>
-                        </div>
-                        <div className="p-3 rounded-lg bg-card border border-border">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs text-muted-foreground">Nov 5, 2025 - 10:00 AM</span>
-                          </div>
-                          <p className="text-sm text-foreground">Initial contact made. Positive response. Requested more information.</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Activity Tab */}
-                <TabsContent value="activity" className="space-y-6 mt-6">
-                  <Card className="bg-card/50 backdrop-blur-sm border-border">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-primary" />
-                        Activity Timeline
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {[
-                          { type: 'email', action: 'Email sent', time: '2 hours ago', icon: <Mail className="w-4 h-4" /> },
-                          { type: 'meeting', action: 'Meeting scheduled', time: '1 day ago', icon: <Video className="w-4 h-4" /> },
-                          { type: 'call', action: 'Call completed', time: '1 day ago', icon: <Phone className="w-4 h-4" /> },
-                          { type: 'note', action: 'Note added', time: '2 days ago', icon: <Pencil className="w-4 h-4" /> },
-                          { type: 'status', action: 'Status changed to Follow-up', time: '3 days ago', icon: <Target className="w-4 h-4" /> },
-                          { type: 'created', action: 'Lead created', time: '10 days ago', icon: <Plus className="w-4 h-4" /> }
-                        ].map((activity, index) => (
-                          <div key={index} className="flex items-start gap-4 p-3 rounded-lg hover:bg-card/50 transition-all">
-                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white shadow-lg shadow-primary/30">
-                              {activity.icon}
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-foreground">{activity.action}</p>
-                              <p className="text-xs text-muted-foreground">{activity.time}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-gradient-to-r from-primary/10 to-secondary/10 border-primary/20">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Target className="w-5 h-5 text-primary" />
-                        Next Actions
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-2">
-                        <li className="flex items-center gap-2 text-sm text-foreground">
-                          <CheckCircle2 className="w-4 h-4 text-secondary" />
-                          Send follow-up email by Nov 13
-                        </li>
-                        <li className="flex items-center gap-2 text-sm text-foreground">
-                          <CheckCircle2 className="w-4 h-4 text-secondary" />
-                          Schedule technical demo
-                        </li>
-                        <li className="flex items-center gap-2 text-sm text-foreground">
-                          <CheckCircle2 className="w-4 h-4 text-secondary" />
-                          Prepare pricing proposal
-                        </li>
-                      </ul>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Team Member Detail Dialog */}
-      <Dialog open={showTeamDetail} onOpenChange={setShowTeamDetail}>
-        <DialogContent className="bg-card border-border max-w-6xl max-h-[90vh] overflow-y-auto">
-          {selectedTeamMember && (
-            <>
-              <DialogHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-2xl font-bold shadow-2xl shadow-primary/40">
-                      {selectedTeamMember.avatar}
-                    </div>
-                    <div>
-                      <DialogTitle className="text-2xl">{selectedTeamMember.name}</DialogTitle>
-                      <DialogDescription className="text-lg">{selectedTeamMember.role}</DialogDescription>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge className={`${
-                      selectedTeamMember.status === 'Active' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
-                      selectedTeamMember.status === 'Away' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
-                      'bg-gray-500/20 text-gray-400 border-gray-500/30'
-                    } border shadow-md px-4 py-2 text-sm`}>
-                      {selectedTeamMember.status}
-                    </Badge>
-                  </div>
-                </div>
-              </DialogHeader>
-
-              <div className="mt-6 space-y-6">
-                {/* Current Task */}
-                <Card className="bg-card/50 backdrop-blur-sm border-border">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <Target className="w-5 h-5 text-primary" />
-                      Current Focus
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-foreground">{selectedTeamMember.currentTask}</p>
-                  </CardContent>
-                </Card>
-
-                {/* Performance Analysis */}
-                <Card className="bg-card/50 backdrop-blur-sm border-border">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2 text-lg">
-                        <TrendingUp className="w-5 h-5 text-primary" />
-                        Performance Analysis
-                      </CardTitle>
-                      <Select value={performancePeriod} onValueChange={(value) => setPerformancePeriod(value as 'daily' | 'weekly' | 'monthly')}>
-                        <SelectTrigger className="w-32 bg-background/50 border-2 border-border">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="daily">Daily</SelectItem>
-                          <SelectItem value="weekly">Weekly</SelectItem>
-                          <SelectItem value="monthly">Monthly</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Overall Completion Rate */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-muted-foreground">
-                          {performancePeriod.charAt(0).toUpperCase() + performancePeriod.slice(1)} Completion Rate
-                        </span>
-                        <span className="text-2xl font-bold text-foreground">
-                          {performancePeriod === 'daily' ? selectedTeamMember.dailyCompletion :
-                           performancePeriod === 'weekly' ? selectedTeamMember.weeklyCompletion :
-                           selectedTeamMember.monthlyCompletion}%
-                        </span>
-                      </div>
-                      <Progress 
-                        value={performancePeriod === 'daily' ? selectedTeamMember.dailyCompletion :
-                               performancePeriod === 'weekly' ? selectedTeamMember.weeklyCompletion :
-                               selectedTeamMember.monthlyCompletion} 
-                        className="h-3"
-                      />
-                    </div>
-
-                    {/* Task Statistics */}
-                    <div className="grid grid-cols-4 gap-4">
-                      <div className="p-4 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
-                        <p className="text-xs text-muted-foreground mb-1">Assigned</p>
-                        <p className="text-2xl font-bold text-foreground">{selectedTeamMember.tasksAssigned}</p>
-                      </div>
-                      <div className="p-4 rounded-lg bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20">
-                        <p className="text-xs text-muted-foreground mb-1">Completed</p>
-                        <p className="text-2xl font-bold text-green-400">{selectedTeamMember.tasksCompleted}</p>
-                      </div>
-                      <div className="p-4 rounded-lg bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20">
-                        <p className="text-xs text-muted-foreground mb-1">In Progress</p>
-                        <p className="text-2xl font-bold text-blue-400">{selectedTeamMember.tasksInProgress}</p>
-                      </div>
-                      <div className="p-4 rounded-lg bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border border-yellow-500/20">
-                        <p className="text-xs text-muted-foreground mb-1">Pending</p>
-                        <p className="text-2xl font-bold text-yellow-400">{selectedTeamMember.tasksPending}</p>
-                      </div>
-                    </div>
-
-                    {/* Work Assigned vs Done */}
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-muted-foreground">Work Progress</p>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-foreground min-w-24">Assigned</span>
-                        <div className="flex-1 bg-background/50 rounded-full h-6 overflow-hidden border border-border">
-                          <div className="h-full bg-gradient-to-r from-primary to-secondary" style={{ width: '100%' }}></div>
-                        </div>
-                        <span className="text-sm font-semibold text-foreground min-w-12 text-right">{selectedTeamMember.tasksAssigned}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-foreground min-w-24">Completed</span>
-                        <div className="flex-1 bg-background/50 rounded-full h-6 overflow-hidden border border-border">
-                          <div 
-                            className="h-full bg-gradient-to-r from-green-500 to-emerald-500" 
-                            style={{ width: `${(selectedTeamMember.tasksCompleted / selectedTeamMember.tasksAssigned) * 100}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-sm font-semibold text-green-400 min-w-12 text-right">{selectedTeamMember.tasksCompleted}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Task List */}
-                <Card className="bg-card/50 backdrop-blur-sm border-border">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <CheckCircle2 className="w-5 h-5 text-primary" />
-                      Task Overview
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Tabs defaultValue="all" className="w-full">
-                      <TabsList className="grid w-full grid-cols-4 bg-background/50">
-                        <TabsTrigger value="all">All ({selectedTeamMember.tasks.length})</TabsTrigger>
-                        <TabsTrigger value="completed">Completed ({selectedTeamMember.tasksCompleted})</TabsTrigger>
-                        <TabsTrigger value="in-progress">In Progress ({selectedTeamMember.tasksInProgress})</TabsTrigger>
-                        <TabsTrigger value="pending">Pending ({selectedTeamMember.tasksPending})</TabsTrigger>
-                      </TabsList>
-                      
-                      <TabsContent value="all" className="space-y-3 mt-4">
-                        {selectedTeamMember.tasks.map((task) => (
-                          <div key={task.id} className="flex items-start gap-3 p-4 rounded-lg bg-background/30 border border-border hover:bg-card/50 transition-all">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                              task.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                              task.status === 'in-progress' ? 'bg-blue-500/20 text-blue-400' :
-                              'bg-yellow-500/20 text-yellow-400'
-                            }`}>
-                              {task.status === 'completed' ? <CheckCircle2 className="w-5 h-5" /> :
-                               task.status === 'in-progress' ? <Clock className="w-5 h-5" /> :
-                               <Calendar className="w-5 h-5" />}
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-start justify-between gap-4">
-                                <p className="font-medium text-foreground">{task.task}</p>
-                                <Badge className={`${
-                                  task.priority === 'High' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
-                                  task.priority === 'Medium' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-                                  'bg-gray-500/20 text-gray-400 border-gray-500/30'
-                                } border shadow-md`}>
-                                  {task.priority}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  Due: {task.dueDate}
-                                </span>
-                                {task.completedAt && (
-                                  <span className="flex items-center gap-1 text-green-400">
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    Completed: {task.completedAt}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </TabsContent>
-
-                      <TabsContent value="completed" className="space-y-3 mt-4">
-                        {selectedTeamMember.tasks.filter(t => t.status === 'completed').map((task) => (
-                          <div key={task.id} className="flex items-start gap-3 p-4 rounded-lg bg-background/30 border border-border hover:bg-card/50 transition-all">
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-green-500/20 text-green-400">
-                              <CheckCircle2 className="w-5 h-5" />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-start justify-between gap-4">
-                                <p className="font-medium text-foreground">{task.task}</p>
-                                <Badge className={`${
-                                  task.priority === 'High' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
-                                  task.priority === 'Medium' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-                                  'bg-gray-500/20 text-gray-400 border-gray-500/30'
-                                } border shadow-md`}>
-                                  {task.priority}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-4 mt-2 text-xs">
-                                <span className="flex items-center gap-1 text-muted-foreground">
-                                  <Calendar className="w-3 h-3" />
-                                  Due: {task.dueDate}
-                                </span>
-                                <span className="flex items-center gap-1 text-green-400">
-                                  <CheckCircle2 className="w-3 h-3" />
-                                  Completed: {task.completedAt}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </TabsContent>
-
-                      <TabsContent value="in-progress" className="space-y-3 mt-4">
-                        {selectedTeamMember.tasks.filter(t => t.status === 'in-progress').map((task) => (
-                          <div key={task.id} className="flex items-start gap-3 p-4 rounded-lg bg-background/30 border border-border hover:bg-card/50 transition-all">
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-500/20 text-blue-400">
-                              <Clock className="w-5 h-5" />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-start justify-between gap-4">
-                                <p className="font-medium text-foreground">{task.task}</p>
-                                <Badge className={`${
-                                  task.priority === 'High' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
-                                  task.priority === 'Medium' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-                                  'bg-gray-500/20 text-gray-400 border-gray-500/30'
-                                } border shadow-md`}>
-                                  {task.priority}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  Due: {task.dueDate}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </TabsContent>
-
-                      <TabsContent value="pending" className="space-y-3 mt-4">
-                        {selectedTeamMember.tasks.filter(t => t.status === 'pending').map((task) => (
-                          <div key={task.id} className="flex items-start gap-3 p-4 rounded-lg bg-background/30 border border-border hover:bg-card/50 transition-all">
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-yellow-500/20 text-yellow-400">
-                              <Calendar className="w-5 h-5" />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-start justify-between gap-4">
-                                <p className="font-medium text-foreground">{task.task}</p>
-                                <Badge className={`${
-                                  task.priority === 'High' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
-                                  task.priority === 'Medium' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-                                  'bg-gray-500/20 text-gray-400 border-gray-500/30'
-                                } border shadow-md`}>
-                                  {task.priority}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  Due: {task.dueDate}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </TabsContent>
-                    </Tabs>
-                  </CardContent>
-                </Card>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Quick Action: Send Email Dialog */}
-      <Dialog open={showQuickEmail} onOpenChange={setShowQuickEmail}>
-        <DialogContent className="bg-card border-border max-w-3xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Mail className="w-5 h-5 text-primary" />
-              Send Email
-            </DialogTitle>
-            <DialogDescription>Compose and send email with Gmail integration</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            {showQuickEmailPrompt && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="space-y-3 p-4 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/30"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <Bot className="w-5 h-5 text-primary" />
-                  <Label className="text-base font-semibold">AI Prompt</Label>
-                </div>
-                <Textarea
-                  placeholder="Describe what you want the email to focus on..."
-                  value={quickEmailPrompt}
-                  onChange={(e) => setQuickEmailPrompt(e.target.value)}
-                  className="bg-background/50 border-2 border-border min-h-[100px]"
-                />
-                <div className="flex gap-2">
-                  <Button 
-                    onClick={generateQuickEmailTemplate}
-                    disabled={isGeneratingQuickEmail}
-                    className="bg-gradient-to-r from-primary to-secondary"
-                  >
-                    {isGeneratingQuickEmail ? 'Generating...' : 'Generate'}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setShowQuickEmailPrompt(false);
-                      setQuickEmailPrompt('');
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </motion.div>
-            )}
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>From</Label>
-                <Input
-                  placeholder="your@email.com"
-                  value={quickEmailFrom}
-                  onChange={(e) => setQuickEmailFrom(e.target.value)}
-                  className="bg-background/50 border-2 border-border"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>To</Label>
-                <Input
-                  placeholder="recipient@email.com"
-                  value={quickEmailTo}
-                  onChange={(e) => setQuickEmailTo(e.target.value)}
-                  className="bg-background/50 border-2 border-border"
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Subject</Label>
-              <Input
-                placeholder="Email subject..."
-                value={quickEmailSubject}
-                onChange={(e) => setQuickEmailSubject(e.target.value)}
-                className="bg-background/50 border-2 border-border"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Body</Label>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={generateQuickEmailTemplate}
-                  disabled={isGeneratingQuickEmail}
-                >
-                  <Bot className="w-4 h-4 mr-2" />
-                  {isGeneratingQuickEmail ? 'Generating...' : 'AI Generate'}
-                </Button>
-              </div>
-              <Textarea
-                placeholder="Write your email..."
-                value={quickEmailBody}
-                onChange={(e) => setQuickEmailBody(e.target.value)}
-                className="bg-background/50 border-2 border-border min-h-[250px]"
-              />
-            </div>
-            
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setShowQuickEmail(false)}>Cancel</Button>
-              <Button className="bg-gradient-to-r from-primary to-secondary">
-                <Send className="w-4 h-4 mr-2" />
-                Send Email
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Quick Action: Schedule Meeting Dialog */}
-      <Dialog open={showQuickMeeting} onOpenChange={setShowQuickMeeting}>
-        <DialogContent className="bg-card border-border max-w-4xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Video className="w-5 h-5 text-primary" />
-              Schedule Meeting
-            </DialogTitle>
-            <DialogDescription>Schedule meeting with Zoom or Google Meet</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            {showQuickMeetingPrompt && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="space-y-3 p-4 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/30"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <Bot className="w-5 h-5 text-primary" />
-                  <Label className="text-base font-semibold">AI Prompt</Label>
-                </div>
-                <Textarea
-                  placeholder="Describe the meeting focus areas..."
-                  value={quickMeetingPrompt}
-                  onChange={(e) => setQuickMeetingPrompt(e.target.value)}
-                  className="bg-background/50 border-2 border-border min-h-[100px]"
-                />
-                <div className="flex gap-2">
-                  <Button 
-                    onClick={generateQuickMeetingAgenda}
-                    disabled={isGeneratingQuickMeeting}
-                    className="bg-gradient-to-r from-primary to-secondary"
-                  >
-                    {isGeneratingQuickMeeting ? 'Generating...' : 'Generate'}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setShowQuickMeetingPrompt(false);
-                      setQuickMeetingPrompt('');
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </motion.div>
-            )}
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Meeting Title</Label>
-                <Input
-                  placeholder="Product Demo"
-                  value={quickMeetingTitle}
-                  onChange={(e) => setQuickMeetingTitle(e.target.value)}
-                  className="bg-background/50 border-2 border-border"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Platform</Label>
-                <Select value={quickMeetingPlatform} onValueChange={setQuickMeetingPlatform}>
-                  <SelectTrigger className="bg-background/50 border-2 border-border">
-                    <SelectValue placeholder="Select platform" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="zoom">Zoom</SelectItem>
-                    <SelectItem value="gmeet">Google Meet</SelectItem>
-                    <SelectItem value="teams">Microsoft Teams</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Attendees</Label>
-              <Input
-                placeholder="email1@example.com, email2@example.com"
-                value={quickMeetingAttendees}
-                onChange={(e) => setQuickMeetingAttendees(e.target.value)}
-                className="bg-background/50 border-2 border-border"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Agenda / Description</Label>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={generateQuickMeetingAgenda}
-                  disabled={isGeneratingQuickMeeting}
-                >
-                  <Bot className="w-4 h-4 mr-2" />
-                  {isGeneratingQuickMeeting ? 'Generating...' : 'AI Generate'}
-                </Button>
-              </div>
-              <Textarea
-                placeholder="Meeting agenda..."
-                value={quickMeetingAgenda}
-                onChange={(e) => setQuickMeetingAgenda(e.target.value)}
-                className="bg-background/50 border-2 border-border min-h-[200px]"
-              />
-            </div>
-            
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setShowQuickMeeting(false)}>Cancel</Button>
-              <Button className="bg-gradient-to-r from-primary to-secondary">
-                <Video className="w-4 h-4 mr-2" />
-                Schedule Meeting
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Quick Action: Cold Call Dialog */}
-      <Dialog open={showQuickCall} onOpenChange={setShowQuickCall}>
-        <DialogContent className="bg-card border-border max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Phone className="w-5 h-5 text-primary" />
-              Cold Call
-            </DialogTitle>
-            <DialogDescription>Prepare and execute cold calling with AI assistance</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Lead Name</Label>
-                <Input
-                  placeholder="John Doe"
-                  value={quickCallLeadName}
-                  onChange={(e) => setQuickCallLeadName(e.target.value)}
-                  className="bg-background/50 border-2 border-border"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Phone Number</Label>
-                <Input
-                  placeholder="+1 (555) 123-4567"
-                  value={quickCallNumber}
-                  onChange={(e) => setQuickCallNumber(e.target.value)}
-                  className="bg-background/50 border-2 border-border"
-                />
-              </div>
-            </div>
-            
-            {showQuickCallPrompt && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="space-y-3 p-4 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/30"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <Bot className="w-5 h-5 text-primary" />
-                  <Label className="text-base font-semibold">AI Prompt</Label>
-                </div>
-                <Textarea
-                  placeholder="Describe the call focus or topics to cover..."
-                  value={quickCallPrompt}
-                  onChange={(e) => setQuickCallPrompt(e.target.value)}
-                  className="bg-background/50 border-2 border-border min-h-[100px]"
-                />
-                <div className="flex gap-2">
-                  <Button 
-                    onClick={generateQuickCallScript}
-                    disabled={isGeneratingQuickCall}
-                    className="bg-gradient-to-r from-primary to-secondary"
-                  >
-                    {isGeneratingQuickCall ? 'Generating...' : 'Generate'}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setShowQuickCallPrompt(false);
-                      setQuickCallPrompt('');
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </motion.div>
-            )}
-            
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Call Script / Transcript</Label>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={generateQuickCallScript}
-                  disabled={isGeneratingQuickCall}
-                >
-                  <Bot className="w-4 h-4 mr-2" />
-                  {isGeneratingQuickCall ? 'Generating...' : 'AI Generate'}
-                </Button>
-              </div>
-              <Textarea
-                placeholder="Call script or transcript..."
-                value={quickCallTranscript}
-                onChange={(e) => setQuickCallTranscript(e.target.value)}
-                className="bg-background/50 border-2 border-border min-h-[300px]"
-              />
-            </div>
-            
-            <Card className="bg-gradient-to-r from-primary/10 to-secondary/10 border-primary/20">
-              <CardHeader>
-                <CardTitle className="text-sm">Call Summary & Next Steps</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm text-muted-foreground">
-                <p>• Review call transcript above</p>
-                <p>• Identify key pain points and objections</p>
-                <p>• Schedule follow-up meeting or demo</p>
-                <p>• Send follow-up email with resources</p>
-                <p>• Update lead status in CRM</p>
-              </CardContent>
-            </Card>
-            
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setShowQuickCall(false)}>Cancel</Button>
-              <Button className="bg-gradient-to-r from-green-500 to-emerald-500">
-                <Phone className="w-4 h-4 mr-2" />
-                Start Call
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Quick Action: Assign Task Dialog */}
-      <Dialog open={showQuickTask} onOpenChange={setShowQuickTask}>
-        <DialogContent className="bg-card border-border max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <User className="w-5 h-5 text-primary" />
-              Assign Task
-            </DialogTitle>
-            <DialogDescription>Assign tasks to team members</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>Team Members</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {teamMembers.map((member) => (
-                  <div
-                    key={member.id}
-                    className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                      quickTaskMembers.includes(member.id)
-                        ? 'border-primary bg-primary/10'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                    onClick={() => {
-                      if (quickTaskMembers.includes(member.id)) {
-                        setQuickTaskMembers(quickTaskMembers.filter(id => id !== member.id));
-                      } else {
-                        setQuickTaskMembers([...quickTaskMembers, member.id]);
-                      }
-                    }}
-                  >
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-xs font-semibold">
-                      {member.avatar}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-foreground">{member.name}</p>
-                      <p className="text-xs text-muted-foreground">{member.role}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Task Description</Label>
-              <Textarea
-                placeholder="Describe the task..."
-                value={quickTaskDescription}
-                onChange={(e) => setQuickTaskDescription(e.target.value)}
-                className="bg-background/50 border-2 border-border min-h-[100px]"
-              />
-            </div>
-            
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-card/50 border border-border">
-              <input
-                type="checkbox"
-                id="schedule-task"
-                checked={quickTaskScheduled}
-                onChange={(e) => setQuickTaskScheduled(e.target.checked)}
-                className="w-4 h-4 rounded border-2 border-primary text-primary focus:ring-primary cursor-pointer"
-              />
-              <Label htmlFor="schedule-task" className="cursor-pointer flex-1">Schedule for later</Label>
-            </div>
-            
-            {quickTaskScheduled && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="space-y-2"
-              >
-                <Label>Date & Time</Label>
-                <Input
-                  type="datetime-local"
-                  value={quickTaskDateTime}
-                  onChange={(e) => setQuickTaskDateTime(e.target.value)}
-                  className="bg-background/50 border-2 border-border"
-                />
-              </motion.div>
-            )}
-            
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setShowQuickTask(false)}>Cancel</Button>
-              <Button className="bg-gradient-to-r from-purple-500 to-pink-500">
-                <CheckCircle2 className="w-4 h-4 mr-2" />
-                {quickTaskScheduled ? 'Schedule Task' : 'Assign Task'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Quick Action: Email Campaign Dialog */}
-      <Dialog open={showQuickCampaign} onOpenChange={setShowQuickCampaign}>
-        <DialogContent className="bg-card border-border max-w-5xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Send className="w-5 h-5 text-primary" />
-              Email Campaign
-            </DialogTitle>
-            <DialogDescription>Create and launch email campaigns to multiple leads</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>Select Leads</Label>
-              <div className="max-h-[200px] overflow-y-auto border border-border rounded-lg p-3 space-y-2 bg-background/30">
-                {leads.map((lead) => (
-                  <div
-                    key={lead.lead_id}
-                    className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-all ${
-                      quickCampaignLeads.includes(lead.lead_id)
-                        ? 'bg-primary/10 border border-primary'
-                        : 'hover:bg-card/50'
-                    }`}
-                    onClick={() => {
-                      if (quickCampaignLeads.includes(lead.lead_id)) {
-                        setQuickCampaignLeads(quickCampaignLeads.filter(id => id !== lead.lead_id));
-                      } else {
-                        setQuickCampaignLeads([...quickCampaignLeads, lead.lead_id]);
-                      }
-                    }}
-                  >
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-xs font-semibold">
-                      {lead.name.charAt(0)}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-foreground">{lead.name}</p>
-                      <p className="text-xs text-muted-foreground">{lead.company} • {lead.email}</p>
-                    </div>
-                    {quickCampaignLeads.includes(lead.lead_id) && (
-                      <CheckCircle2 className="w-5 h-5 text-primary" />
-                    )}
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground">{quickCampaignLeads.length} leads selected</p>
-            </div>
-            
-            {showQuickCampaignPrompt && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="space-y-3 p-4 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/30"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <Bot className="w-5 h-5 text-primary" />
-                  <Label className="text-base font-semibold">AI Prompt</Label>
-                </div>
-                <Textarea
-                  placeholder="Describe the campaign focus and key messages..."
-                  value={quickCampaignPrompt}
-                  onChange={(e) => setQuickCampaignPrompt(e.target.value)}
-                  className="bg-background/50 border-2 border-border min-h-[100px]"
-                />
-                <div className="flex gap-2">
-                  <Button 
-                    onClick={generateQuickCampaignContent}
-                    disabled={isGeneratingQuickCampaign}
-                    className="bg-gradient-to-r from-primary to-secondary"
-                  >
-                    {isGeneratingQuickCampaign ? 'Generating...' : 'Generate'}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setShowQuickCampaignPrompt(false);
-                      setQuickCampaignPrompt('');
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </motion.div>
-            )}
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>From</Label>
-                <Input
-                  placeholder="your@company.com"
-                  value={quickCampaignFrom}
-                  onChange={(e) => setQuickCampaignFrom(e.target.value)}
-                  className="bg-background/50 border-2 border-border"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Subject</Label>
-                <Input
-                  placeholder="Campaign subject..."
-                  value={quickCampaignSubject}
-                  onChange={(e) => setQuickCampaignSubject(e.target.value)}
-                  className="bg-background/50 border-2 border-border"
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Email Body</Label>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={generateQuickCampaignContent}
-                  disabled={isGeneratingQuickCampaign}
-                >
-                  <Bot className="w-4 h-4 mr-2" />
-                  {isGeneratingQuickCampaign ? 'Generating...' : 'AI Generate'}
-                </Button>
-              </div>
-              <Textarea
-                placeholder="Campaign email body... Use {{Name}}, {{Company}} for personalization"
-                value={quickCampaignBody}
-                onChange={(e) => setQuickCampaignBody(e.target.value)}
-                className="bg-background/50 border-2 border-border min-h-[250px]"
-              />
-              <p className="text-xs text-muted-foreground">
-                💡 Use variables: {`{{Name}}, {{Company}}, {{Email}}`} for personalization
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-card/50 border border-border">
-              <input
-                type="checkbox"
-                id="schedule-campaign"
-                checked={quickCampaignScheduled}
-                onChange={(e) => setQuickCampaignScheduled(e.target.checked)}
-                className="w-4 h-4 rounded border-2 border-primary text-primary focus:ring-primary cursor-pointer"
-              />
-              <Label htmlFor="schedule-campaign" className="cursor-pointer flex-1">Schedule campaign for later</Label>
-            </div>
-            
-            {quickCampaignScheduled && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="space-y-2"
-              >
-                <Label>Schedule Date & Time</Label>
-                <Input
-                  type="datetime-local"
-                  value={quickCampaignDateTime}
-                  onChange={(e) => setQuickCampaignDateTime(e.target.value)}
-                  className="bg-background/50 border-2 border-border"
-                />
-              </motion.div>
-            )}
-            
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setShowQuickCampaign(false)}>Cancel</Button>
-              <Button className="bg-gradient-to-r from-orange-500 to-red-500">
-                <Send className="w-4 h-4 mr-2" />
-                {quickCampaignScheduled ? 'Schedule Campaign' : 'Launch Campaign'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* AI Sales Assistant - Floating Button */}
-      <motion.button
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 1, type: 'spring', stiffness: 260, damping: 20 }}
-        onClick={() => setShowAssistant(!showAssistant)}
-        className="fixed bottom-8 right-8 w-16 h-16 rounded-full bg-gradient-to-br from-primary via-secondary to-primary bg-size-200 animate-gradient shadow-2xl shadow-primary/50 hover:shadow-primary/70 transition-all duration-300 hover:scale-110 z-50 flex items-center justify-center group"
-      >
-        {showAssistant ? (
-          <X className="w-7 h-7 text-white group-hover:rotate-90 transition-transform duration-300" />
-        ) : (
+      {/* AI Chat Assistant - Floating Widget */}
+      <div className="fixed bottom-6 right-6 z-50">
+        {showChatAssistant ? (
           <motion.div
-            animate={{ 
-              y: [0, -5, 0],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              repeatType: "reverse"
-            }}
-          >
-            <Sparkles className="w-7 h-7 text-white" />
-          </motion.div>
-        )}
-        {!showAssistant && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-background animate-pulse"></span>
-        )}
-      </motion.button>
-
-      {/* AI Sales Assistant - Chat Panel */}
-      <AnimatePresence>
-        {showAssistant && (
-          <motion.div
-            initial={{ opacity: 0, x: 400 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 400 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed bottom-8 right-28 w-96 h-[600px] bg-card/95 backdrop-blur-2xl border-2 border-primary/30 rounded-3xl shadow-2xl shadow-primary/30 z-50 flex flex-col overflow-hidden"
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="w-[420px] h-[600px] bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col backdrop-blur-2xl"
           >
             {/* Chat Header */}
-            <div className="bg-gradient-to-r from-primary via-secondary to-primary bg-size-200 animate-gradient p-6 border-b border-primary/20">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xl flex items-center justify-center">
-                      <Sparkles className="w-6 h-6 text-white" />
-                    </div>
-                    <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white"></span>
+            <div className="bg-gradient-to-r from-cyan-500 to-blue-600 p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-white" />
                   </div>
-                  <div>
-                    <h3 className="font-bold text-white text-lg">Sales AI Assistant</h3>
-                    <p className="text-xs text-white/80 flex items-center gap-1">
-                      <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                      Online & Ready to Help
-                    </p>
-                  </div>
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-cyan-600 animate-pulse"></div>
                 </div>
+                <div>
+                  <h3 className="font-bold text-white">AI Assistant</h3>
+                  <p className="text-xs text-cyan-100">Always here to help</p>
+                </div>
+              </div>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => setShowChatAssistant(false)}
+                className="text-white hover:bg-white/20"
+              >
+                <Minimize2 className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Quick Questions */}
+            <div className="p-3 bg-slate-800/30 border-b border-white/10 overflow-x-auto">
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleQuickQuestion('How many prospects do I have?')}
+                  className="bg-white/5 border-white/10 text-white hover:bg-white/10 whitespace-nowrap text-xs"
+                >
+                  📊 Prospects
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleQuickQuestion('Schedule a meeting')}
+                  className="bg-white/5 border-white/10 text-white hover:bg-white/10 whitespace-nowrap text-xs"
+                >
+                  📅 Schedule
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleQuickQuestion('Show hot leads')}
+                  className="bg-white/5 border-white/10 text-white hover:bg-white/10 whitespace-nowrap text-xs"
+                >
+                  🔥 Hot Leads
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleQuickQuestion('Give me recommendations')}
+                  className="bg-white/5 border-white/10 text-white hover:bg-white/10 whitespace-nowrap text-xs"
+                >
+                  💡 Insights
+                </Button>
               </div>
             </div>
 
             {/* Chat Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {assistantMessages.map((message) => (
+              {chatMessages.map((message) => (
                 <motion.div
                   key={message.id}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`flex gap-2 max-w-[85%] ${message.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                      message.sender === 'assistant' 
-                        ? 'bg-gradient-to-br from-primary to-secondary' 
-                        : 'bg-gradient-to-br from-purple-500 to-pink-500'
-                    }`}>
-                      {message.sender === 'assistant' ? (
-                        <Bot className="w-5 h-5 text-white" />
-                      ) : (
-                        <User className="w-5 h-5 text-white" />
+                  <div className={`max-w-[85%] ${message.sender === 'user' ? 'order-2' : 'order-1'}`}>
+                    {message.sender === 'ai' && (
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
+                          <Sparkles className="w-3 h-3 text-white" />
+                        </div>
+                        <span className="text-xs text-gray-400">AI Assistant</span>
+                      </div>
+                    )}
+                    <div
+                      className={`rounded-2xl p-3 ${
+                        message.sender === 'user'
+                          ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white'
+                          : 'bg-slate-800/50 border border-white/10 text-gray-200'
+                      }`}
+                    >
+                      <p className="text-sm whitespace-pre-line leading-relaxed">{message.text}</p>
+                      {message.action && (
+                        <div className="mt-3 pt-3 border-t border-white/10">
+                          <Link
+                            href={
+                              message.action.type === 'schedule_meeting' ? '/meetings' :
+                              message.action.type === 'view_prospects' ? '/prospects' :
+                              message.action.type === 'send_email' ? '/cold-mailing' :
+                              message.action.type === 'view_analytics' ? '/cold-mailing/analytics' :
+                              '/dashboard'
+                            }
+                          >
+                            <Button
+                              size="sm"
+                              className={`w-full ${
+                                message.sender === 'user'
+                                  ? 'bg-white/20 hover:bg-white/30 text-white'
+                                  : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white'
+                              }`}
+                            >
+                              {message.action.type === 'schedule_meeting' && '📅 Open Meeting Scheduler'}
+                              {message.action.type === 'view_prospects' && '👥 View All Prospects'}
+                              {message.action.type === 'send_email' && '📧 Go to Email'}
+                              {message.action.type === 'view_analytics' && '📊 View Analytics'}
+                            </Button>
+                          </Link>
+                        </div>
                       )}
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <div className={`px-4 py-3 rounded-2xl ${
-                        message.sender === 'assistant'
-                          ? 'bg-gradient-to-br from-primary/10 to-secondary/10 border border-primary/20'
-                          : 'bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/20'
-                      }`}>
-                        <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">
-                          {message.text}
-                        </p>
+                    {message.sender === 'user' && (
+                      <div className="text-xs text-gray-500 mt-1 text-right">
+                        {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </div>
-                      <span className="text-[10px] text-muted-foreground px-2">
-                        {message.timestamp}
-                      </span>
-                    </div>
+                    )}
                   </div>
                 </motion.div>
               ))}
-            </div>
-
-            {/* Quick Actions Suggestions */}
-            <div className="px-4 py-2 border-t border-border/50">
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {[
-                  { icon: Calendar, text: 'Schedule Meeting', action: 'schedule a meeting' },
-                  { icon: Users, text: 'View Leads', action: 'show me leads' },
-                  { icon: Send, text: 'Create Campaign', action: 'create campaign' },
-                  { icon: TrendingUp, text: 'Analytics', action: 'show performance' }
-                ].map((suggestion, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      setAssistantInput(suggestion.action);
-                      setTimeout(() => handleAssistantMessage(), 100);
-                    }}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-card/50 border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 whitespace-nowrap group"
-                  >
-                    <suggestion.icon className="w-3 h-3 text-primary group-hover:scale-110 transition-transform" />
-                    <span className="text-xs text-foreground">{suggestion.text}</span>
-                  </button>
-                ))}
-              </div>
+              
+              {isTyping && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex justify-start"
+                >
+                  <div className="max-w-[85%]">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
+                        <Sparkles className="w-3 h-3 text-white" />
+                      </div>
+                      <span className="text-xs text-gray-400">AI Assistant</span>
+                    </div>
+                    <div className="rounded-2xl p-3 bg-slate-800/50 border border-white/10">
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                        <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                        <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+              
+              <div ref={chatEndRef} />
             </div>
 
             {/* Chat Input */}
-            <div className="p-4 border-t border-border/50 bg-card/50">
+            <div className="p-4 bg-slate-800/30 border-t border-white/10">
               <div className="flex gap-2">
-                <Input
-                  value={assistantInput}
-                  onChange={(e) => setAssistantInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAssistantMessage()}
+                <Textarea
+                  ref={chatInputRef}
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
                   placeholder="Ask me anything..."
-                  className="flex-1 bg-background/50 border-2 border-border focus:border-primary/50 rounded-xl"
+                  className="flex-1 bg-slate-900/50 border-white/10 text-white resize-none min-h-[44px] max-h-[120px]"
+                  rows={1}
                 />
                 <Button
-                  onClick={handleAssistantMessage}
-                  disabled={!assistantInput.trim()}
-                  className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 rounded-xl shadow-lg shadow-primary/30 hover:shadow-primary/50 transition-all duration-300"
+                  onClick={handleSendMessage}
+                  disabled={!chatInput.trim() || isTyping}
+                  className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:opacity-50"
+                  size="icon"
                 >
-                  <Send className="w-4 h-4" />
+                  {isTyping ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
                 </Button>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-2 text-center">
-                Powered by AI • Context-aware • Real-time
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                Press Enter to send, Shift+Enter for new line
               </p>
             </div>
           </motion.div>
+        ) : (
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowChatAssistant(true)}
+            className="relative group"
+          >
+            <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full blur-xl opacity-70 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-2xl shadow-cyan-500/50 hover:shadow-cyan-500/70 transition-all duration-300">
+              <MessageCircle className="w-7 h-7 text-white" />
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white animate-pulse"></div>
+            </div>
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              whileHover={{ opacity: 1, x: 0 }}
+              className="absolute right-20 top-1/2 -translate-y-1/2 bg-slate-900 text-white px-4 py-2 rounded-lg shadow-xl whitespace-nowrap pointer-events-none border border-white/10"
+            >
+              <p className="text-sm font-medium">Ask AI Assistant</p>
+              <p className="text-xs text-gray-400">I can help with anything!</p>
+              <div className="absolute right-[-6px] top-1/2 -translate-y-1/2 w-0 h-0 border-t-8 border-t-transparent border-l-8 border-l-slate-900 border-b-8 border-b-transparent"></div>
+            </motion.div>
+          </motion.button>
         )}
-      </AnimatePresence>
+      </div>
     </div>
   );
 }

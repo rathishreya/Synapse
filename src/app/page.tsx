@@ -69,14 +69,14 @@ export default function LandingPage() {
             <Link href="#features" className="text-muted-foreground hover:text-foreground transition">Features</Link>
             <Link href="#how-it-works" className="text-muted-foreground hover:text-foreground transition">How It Works</Link>
             <Link href="#agents" className="text-muted-foreground hover:text-foreground transition">AI Agents</Link>
-            <Link href="/login" className="text-muted-foreground hover:text-foreground transition">Login</Link>
+            <Link href="/auth" className="text-muted-foreground hover:text-foreground transition">Login</Link>
           </div>
           <div className="flex gap-3">
             <Button variant="outline" className="border-primary/20 hover:bg-primary/10 hover:border-primary/40 transition-all duration-300" asChild>
-              <Link href="/login">Sign In</Link>
+              <Link href="/auth">Sign In</Link>
             </Button>
             <Button className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all duration-300" asChild>
-              <Link href="/login">Get Started</Link>
+              <Link href="/auth">Get Started</Link>
             </Button>
           </div>
         </div>
@@ -126,12 +126,12 @@ export default function LandingPage() {
               className="flex flex-col sm:flex-row gap-6 justify-center items-center"
             >
               <Button size="lg" className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 shadow-lg shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 transition-all duration-300 px-10 py-7 text-lg font-semibold group" asChild>
-                <Link href="/login">
+                <Link href="/auth">
                   Book a Demo <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </Button>
               <Button size="lg" variant="outline" className="px-10 py-7 text-lg font-semibold border-2 border-border hover:border-primary/40 hover:bg-primary/5 backdrop-blur-sm transition-all duration-300" asChild>
-                <Link href="/login">Start Free Trial</Link>
+                <Link href="/auth">Start Free Trial</Link>
               </Button>
             </motion.div>
 
@@ -477,12 +477,12 @@ export default function LandingPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-6 justify-center">
               <Button size="lg" className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 shadow-2xl shadow-primary/30 hover:shadow-3xl hover:shadow-primary/50 transition-all duration-300 px-12 py-8 text-lg font-semibold group" asChild>
-                <Link href="/login">
+                <Link href="/auth">
                   Book a Demo <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </Button>
               <Button size="lg" variant="outline" className="px-12 py-8 text-lg font-semibold border-2 border-border hover:border-primary/40 hover:bg-primary/5 backdrop-blur-sm transition-all duration-300" asChild>
-                <Link href="/login">Start Free Trial</Link>
+                <Link href="/auth">Start Free Trial</Link>
               </Button>
             </div>
             <p className="mt-10 text-muted-foreground flex items-center justify-center gap-2 text-lg">
