@@ -36,9 +36,26 @@ import {
   X
 } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
-export default function ProspectDetailPage({ params }: { params: { id: string } }) {
+interface ProspectDetailPageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default function ProspectDetailPage({ params }: ProspectDetailPageProps) {
+  const [prospectId, setProspectId] = useState<string>('');
+  
+  useEffect(() => {
+    let isMounted = true;
+    params.then((resolvedParams) => {
+      if (isMounted) {
+        setProspectId(resolvedParams.id);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [params]);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [notes, setNotes] = useState('Interested in enterprise package. Discussed pricing.');
@@ -77,7 +94,7 @@ export default function ProspectDetailPage({ params }: { params: { id: string } 
 
   // Mock data
   const prospect = {
-    id: params.id,
+    id: prospectId || '1',
     name: 'John Smith',
     company: 'Acme Corp',
     email: 'john@acme.com',
