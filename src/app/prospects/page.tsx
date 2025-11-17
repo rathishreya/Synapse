@@ -121,9 +121,9 @@ export default function ProspectsPage() {
   const [callSummary, setCallSummary] = useState('');
 
   const offerings = [
-    { id: 'enterprise', name: 'Enterprise Solutions' },
-    { id: 'saas', name: 'SaaS Products' },
-    { id: 'consulting', name: 'Consulting Services' }
+    { id: 'enterprise', name: 'Enterprise Solutions', followUpCount: 3 },
+    { id: 'saas', name: 'SaaS Products', followUpCount: 2 },
+    { id: 'consulting', name: 'Consulting Services', followUpCount: 4 }
   ];
 
   const prospects = [
