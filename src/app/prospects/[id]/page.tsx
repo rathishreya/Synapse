@@ -44,16 +44,17 @@ interface ProspectDetailPageProps {
 
 export default function ProspectDetailPage({ params }: ProspectDetailPageProps) {
   const [prospectId, setProspectId] = useState<string>('');
+  const isMountedRef = useRef(true);
   
   useEffect(() => {
-    let isMounted = true;
+    isMountedRef.current = true;
     params.then((resolvedParams) => {
-      if (isMounted) {
+      if (isMountedRef.current) {
         setProspectId(resolvedParams.id);
       }
     });
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
   }, [params]);
   const [isEditing, setIsEditing] = useState(false);
