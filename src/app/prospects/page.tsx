@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   ArrowLeft,
   Search,
@@ -46,7 +47,11 @@ import {
   StopCircle,
   X,
   Upload,
-  Users
+  Users,
+  ChevronRight,
+  Bot,
+  AlertCircle,
+  Target
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -90,7 +95,26 @@ export default function ProspectsPage() {
   
   // Start Outreach states
   const [showStartOutreach, setShowStartOutreach] = useState(false);
+  const [outreachStep, setOutreachStep] = useState<1 | 2>(1);
   const [outreachOffering, setOutreachOffering] = useState('');
+  const [outreachMethod, setOutreachMethod] = useState<'manual' | 'ai' | null>(null);
+  const [outreachChannels, setOutreachChannels] = useState<string[]>([]);
+  const [followUpCount, setFollowUpCount] = useState('');
+  const [followUpFrequency, setFollowUpFrequency] = useState('');
+  const [timeOfFollowUp, setTimeOfFollowUp] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [customDate, setCustomDate] = useState('');
+  const [customTime, setCustomTime] = useState('');
+  const [testFrom, setTestFrom] = useState('');
+  const [testTo, setTestTo] = useState('');
+  const [testSubject, setTestSubject] = useState('');
+  const [testBody, setTestBody] = useState('');
+  const [customFollowUpCount, setCustomFollowUpCount] = useState('');
+  const [customFrequency, setCustomFrequency] = useState('');
+  const [outreachTemplates, setOutreachTemplates] = useState<Record<string, string>>({});
+  const [outreachCurrentOfferingIndex, setOutreachCurrentOfferingIndex] = useState(0);
+  const [followupStrategy, setFollowupStrategy] = useState<Record<string, 'same' | 'custom'>>({});
+  const [outreachAIPrompt, setOutreachAIPrompt] = useState('');
   
   // Create Group states
   const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -1290,81 +1314,588 @@ If not interested → Thank and end call`);
         </DialogContent>
       </Dialog>
 
-      {/* Start Outreach Dialog */}
-      <Dialog open={showStartOutreach} onOpenChange={setShowStartOutreach}>
-        <DialogContent className="bg-slate-900 border-white/10">
+      {/* Start Outreach Dialog - Multi-Step */}
+      <Dialog open={showStartOutreach} onOpenChange={(open) => {
+        setShowStartOutreach(open);
+        if (!open) {
+          // Reset all states when dialog closes
+          setOutreachStep(1);
+          setOutreachOffering('');
+          setOutreachMethod(null);
+          setOutreachChannels([]);
+          setFollowUpCount('');
+          setFollowUpFrequency('');
+          setTimeOfFollowUp('');
+          setStartTime('');
+          setCustomDate('');
+          setCustomTime('');
+          setTestFrom('');
+          setTestTo('');
+          setTestSubject('');
+          setTestBody('');
+          setCustomFollowUpCount('');
+          setCustomFrequency('');
+          setOutreachTemplates({});
+          setOutreachCurrentOfferingIndex(0);
+          setFollowupStrategy({});
+          setOutreachAIPrompt('');
+        }
+      }}>
+        <DialogContent className="bg-slate-900 border-white/10 max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-white">Start Outreach Campaign</DialogTitle>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Zap className="w-5 h-5 text-cyan-400" />
+              Start Outreach Campaign
+              <Badge variant="secondary" className="ml-auto">
+                Step {outreachStep} of 2
+              </Badge>
+            </DialogTitle>
             <DialogDescription className="text-gray-400">
-              Select an offering to start automated outreach
+              {outreachStep === 1 ? 'Configure your outreach strategy' : 'Set up message templates'}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label className="text-gray-300 mb-3 block">Select Offering</Label>
-              <Select value={outreachOffering} onValueChange={setOutreachOffering}>
-                <SelectTrigger className="bg-slate-800/50 border-white/10 text-white">
-                  <SelectValue placeholder="Choose an offering..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {offerings.map(offering => (
-                    <SelectItem key={offering.id} value={offering.id}>
-                      {offering.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
 
-            <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <Zap className="w-5 h-5 text-cyan-400 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-cyan-400 mb-1">Automated Outreach</p>
-                  <p className="text-xs text-gray-400">
-                    {outreachOffering 
-                      ? `Campaign will use ${offerings.find(o => o.id === outreachOffering)?.name} templates and settings`
-                      : 'Select an offering to view campaign details'}
-                  </p>
-                </div>
+          {outreachStep === 1 && (
+            <div className="space-y-6 py-4">
+              {/* Step 1: Offering Selection & Outreach Configuration */}
+              <div>
+                <Label className="text-gray-300 mb-3 block">Select Offering *</Label>
+                <Select value={outreachOffering} onValueChange={setOutreachOffering}>
+                  <SelectTrigger className="bg-slate-800/50 border-white/10 text-white">
+                    <SelectValue placeholder="Choose an offering..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {offerings.map(offering => (
+                      <SelectItem key={offering.id} value={offering.id}>
+                        {offering.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {outreachOffering && (
+                <>
+                  <Separator className="bg-white/10" />
+                  
+                  <div>
+                    <Label className="text-gray-300 mb-4 block">Choose Outreach Method *</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                        <Card 
+                          className={`cursor-pointer transition-all border-2 ${
+                            outreachMethod === 'manual' 
+                              ? 'border-cyan-500 shadow-lg shadow-cyan-500/20 bg-cyan-500/5' 
+                              : 'border-white/10 hover:border-cyan-500/50 bg-slate-800/50'
+                          }`}
+                          onClick={() => setOutreachMethod('manual')}
+                        >
+                          <CardHeader className="text-center pb-4">
+                            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 mx-auto mb-3">
+                              <User className="w-6 h-6 text-white" />
+                            </div>
+                            <CardTitle className="text-base mb-1 text-white">Manual</CardTitle>
+                            <p className="text-xs text-gray-400">You control every outreach interaction</p>
+                          </CardHeader>
+                        </Card>
+                      </motion.div>
+
+                      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                        <Card 
+                          className={`cursor-pointer transition-all border-2 ${
+                            outreachMethod === 'ai' 
+                              ? 'border-cyan-500 shadow-lg shadow-cyan-500/20 bg-cyan-500/5' 
+                              : 'border-white/10 hover:border-cyan-500/50 bg-slate-800/50'
+                          }`}
+                          onClick={() => setOutreachMethod('ai')}
+                        >
+                          <CardHeader className="text-center pb-4">
+                            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 mx-auto mb-3">
+                              <Bot className="w-6 h-6 text-white" />
+                            </div>
+                            <CardTitle className="text-base mb-1 text-white">AI Automated</CardTitle>
+                            <p className="text-xs text-gray-400">Let AI handle outreach automatically</p>
+                          </CardHeader>
+                        </Card>
+                      </motion.div>
+                    </div>
+                  </div>
+
+                  {outreachMethod === 'ai' && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="space-y-4"
+                    >
+                      <Separator className="bg-white/10" />
+
+                      <div className="bg-slate-800/50 rounded-xl p-4 border border-white/10">
+                        <Label className="text-gray-300 mb-3 block">Outreach Channels</Label>
+                        <div className="grid grid-cols-2 gap-3">
+                          {['Cold Calling', 'Cold Mailing', 'LinkedIn DM', 'WhatsApp DM'].map((channel) => (
+                            <div key={channel} className="flex items-center space-x-2 p-3 rounded-lg bg-slate-900/50 border border-white/10 hover:border-cyan-500/50 transition-colors">
+                              <Checkbox 
+                                id={`channel-${channel}`}
+                                checked={outreachChannels.includes(channel)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setOutreachChannels([...outreachChannels, channel]);
+                                  } else {
+                                    setOutreachChannels(outreachChannels.filter(c => c !== channel));
+                                  }
+                                }}
+                                className="data-[state=checked]:bg-cyan-500 data-[state=checked]:border-cyan-500"
+                              />
+                              <label htmlFor={`channel-${channel}`} className="text-sm text-gray-300 cursor-pointer select-none flex-1">
+                                {channel}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-slate-800/50 rounded-xl p-4 border border-white/10">
+                          <Label htmlFor="followUpCount" className="text-gray-300 mb-3 block">Number of Follow-ups</Label>
+                          <Select value={followUpCount} onValueChange={setFollowUpCount}>
+                            <SelectTrigger id="followUpCount" className="bg-slate-900/50 border-white/10 text-white">
+                              <SelectValue placeholder="Select number" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">1 Follow-up</SelectItem>
+                              <SelectItem value="2">2 Follow-ups</SelectItem>
+                              <SelectItem value="3">3 Follow-ups</SelectItem>
+                              <SelectItem value="custom">Custom</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {followUpCount === 'custom' && (
+                            <Input
+                              type="number"
+                              min="1"
+                              placeholder="Enter number"
+                              value={customFollowUpCount}
+                              onChange={(e) => setCustomFollowUpCount(e.target.value)}
+                              className="mt-3 bg-slate-900/50 border-white/10 text-white"
+                            />
+                          )}
+                        </div>
+
+                        <div className="bg-slate-800/50 rounded-xl p-4 border border-white/10">
+                          <Label htmlFor="followUpFrequency" className="text-gray-300 mb-3 block">Follow-up Frequency</Label>
+                          <Select value={followUpFrequency} onValueChange={setFollowUpFrequency}>
+                            <SelectTrigger id="followUpFrequency" className="bg-slate-900/50 border-white/10 text-white">
+                              <SelectValue placeholder="Select frequency" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="weekly">Weekly</SelectItem>
+                              <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                              <SelectItem value="monthly">Monthly</SelectItem>
+                              <SelectItem value="custom">Custom</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {followUpFrequency === 'custom' && (
+                            <Input
+                              type="number"
+                              min="1"
+                              placeholder="Enter days"
+                              value={customFrequency}
+                              onChange={(e) => setCustomFrequency(e.target.value)}
+                              className="mt-3 bg-slate-900/50 border-white/10 text-white"
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-800/50 rounded-xl p-4 border border-white/10">
+                        <Label htmlFor="timeOfFollowUp" className="text-gray-300 mb-3 block">Time of Follow-up</Label>
+                        <Input
+                          id="timeOfFollowUp"
+                          type="time"
+                          value={timeOfFollowUp}
+                          onChange={(e) => setTimeOfFollowUp(e.target.value)}
+                          className="bg-slate-900/50 border-white/10 text-white"
+                        />
+                      </div>
+
+                      <div className="bg-slate-800/50 rounded-xl p-4 border border-white/10">
+                        <Label htmlFor="startTime" className="text-gray-300 mb-3 block">When to start Automated Outreach</Label>
+                        <Select value={startTime} onValueChange={setStartTime}>
+                          <SelectTrigger id="startTime" className="bg-slate-900/50 border-white/10 text-white">
+                            <SelectValue placeholder="Select option" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="test">Test Dummy Reach</SelectItem>
+                            <SelectItem value="immediately">Immediately</SelectItem>
+                            <SelectItem value="custom">Custom Date & Time</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {startTime === 'custom' && (
+                        <div className="bg-slate-800/50 rounded-xl p-4 border border-white/10 space-y-4">
+                          <div>
+                            <Label htmlFor="customDate" className="text-gray-300 mb-2 block">Select Date</Label>
+                            <Input
+                              id="customDate"
+                              type="date"
+                              value={customDate}
+                              onChange={(e) => setCustomDate(e.target.value)}
+                              className="bg-slate-900/50 border-white/10 text-white"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="customTime" className="text-gray-300 mb-2 block">Select Time</Label>
+                            <Input
+                              id="customTime"
+                              type="time"
+                              value={customTime}
+                              onChange={(e) => setCustomTime(e.target.value)}
+                              className="bg-slate-900/50 border-white/10 text-white"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {startTime === 'test' && (
+                        <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4">
+                          <div className="flex items-start gap-3 mb-4">
+                            <div className="p-2 rounded-lg bg-orange-500/20">
+                              <AlertCircle className="w-5 h-5 text-orange-400" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-white mb-1">Test Dummy Reach</h4>
+                              <p className="text-sm text-gray-400 mb-4">
+                                We will not send emails to leads. Test your templates internally.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="testFrom" className="text-gray-300 mb-2 block">From</Label>
+                                <Input
+                                  id="testFrom"
+                                  type="email"
+                                  value={testFrom}
+                                  onChange={(e) => setTestFrom(e.target.value)}
+                                  placeholder="sender@company.com"
+                                  className="bg-slate-900/50 border-white/10 text-white"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="testTo" className="text-gray-300 mb-2 block">To</Label>
+                                <Input
+                                  id="testTo"
+                                  type="email"
+                                  value={testTo}
+                                  onChange={(e) => setTestTo(e.target.value)}
+                                  placeholder="recipient@company.com"
+                                  className="bg-slate-900/50 border-white/10 text-white"
+                                />
+                              </div>
+                            </div>
+
+                            <div>
+                              <Label htmlFor="testSubject" className="text-gray-300 mb-2 block">Subject</Label>
+                              <Input
+                                id="testSubject"
+                                value={testSubject}
+                                onChange={(e) => setTestSubject(e.target.value)}
+                                placeholder="Your test email subject"
+                                className="bg-slate-900/50 border-white/10 text-white"
+                              />
+                            </div>
+
+                            <div>
+                              <Label htmlFor="testBody" className="text-gray-300 mb-2 block">Body (Select from templates)</Label>
+                              <Textarea
+                                id="testBody"
+                                value={testBody}
+                                onChange={(e) => setTestBody(e.target.value)}
+                                placeholder="Your test email body..."
+                                className="min-h-[120px] bg-slate-900/50 border-white/10 text-white"
+                              />
+                            </div>
+
+                            <div className="bg-slate-900/50 rounded-lg p-4 border border-white/10">
+                              <p className="text-sm text-gray-400 italic">
+                                📝 Note: You have to change this from settings in order to start automated outreach
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </>
+              )}
+
+              <div className="flex gap-2 justify-end pt-4 border-t border-white/10">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowStartOutreach(false);
+                  }}
+                  className="bg-white/5 border-white/10 text-white"
+                >
+                  Cancel
+                </Button>
+                {outreachOffering && outreachMethod && (
+                  <Button 
+                    onClick={() => {
+                      if (outreachMethod === 'manual') {
+                        // Skip to templates if manual
+                        setOutreachStep(2);
+                      } else {
+                        // Go to templates if AI automated
+                        setOutreachStep(2);
+                      }
+                    }}
+                    className="bg-gradient-to-r from-cyan-500 to-blue-600"
+                  >
+                    Continue to Templates <ChevronRight className="w-4 h-4 ml-2" />
+                  </Button>
+                )}
               </div>
             </div>
+          )}
 
-            <div className="flex gap-2 justify-end pt-4">
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setShowStartOutreach(false);
-                  setOutreachOffering('');
-                }}
-                className="bg-white/5 border-white/10 text-white"
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={() => {
-                  if (outreachOffering) {
-                    // Check if outreach is configured for this offering
-                    const hasOutreachConfig = true; // This would be checked from actual data
-                    
-                    if (hasOutreachConfig) {
-                      console.log('Starting outreach for:', outreachOffering);
-                      setShowStartOutreach(false);
-                      setOutreachOffering('');
-                    } else {
-                      // Redirect to outreach configuration
-                      window.location.href = '/onboarding?step=outreach';
-                    }
-                  }
-                }}
-                disabled={!outreachOffering}
-                className="bg-gradient-to-r from-cyan-500 to-blue-600 disabled:opacity-50"
-              >
-                <Play className="w-4 h-4 mr-2" />
-                Start Campaign
-              </Button>
+          {outreachStep === 2 && (
+            <div className="space-y-6 py-4">
+              {/* Step 2: Templates Configuration */}
+              <div className="text-center mb-6">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 mx-auto mb-3">
+                  <Mail className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">
+                  Configure Templates for {offerings.find(o => o.id === outreachOffering)?.name}
+                </h3>
+                <p className="text-sm text-gray-400">Set up your outreach, follow-up, and closing templates</p>
+              </div>
+
+              {outreachOffering && (
+                <div className="space-y-6">
+                  {/* Outreach Template */}
+                  <div className="bg-slate-800/50 rounded-xl p-5 border border-white/10">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
+                          1
+                        </div>
+                        <Label className="text-base font-semibold text-white">Outreach Template</Label>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2 border-cyan-500/30 hover:bg-cyan-500/10 text-cyan-400"
+                        onClick={() => {
+                          const prompt = outreachAIPrompt || '';
+                          const aiTemplate = `Hi {{FirstName}},\n\n${prompt || `I noticed your company might benefit from our ${offerings.find(o => o.id === outreachOffering)?.name}.`}\n\nWould you be open to a quick chat?\n\nBest regards,\n{{YourName}}`;
+                          setOutreachTemplates({
+                            ...outreachTemplates,
+                            [`${outreachOffering}-outreach`]: aiTemplate
+                          });
+                          setOutreachAIPrompt('');
+                        }}
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        Generate with AI
+                      </Button>
+                    </div>
+                    <div className="bg-slate-900/50 rounded-lg p-3 border border-white/10 mb-3">
+                      <Label htmlFor="outreach-ai-prompt" className="text-sm font-medium mb-2 block text-gray-300">
+                        AI Generation Prompt (Optional)
+                      </Label>
+                      <Input
+                        id="outreach-ai-prompt"
+                        placeholder="E.g., Focus on cost savings and automation benefits..."
+                        value={outreachAIPrompt}
+                        onChange={(e) => setOutreachAIPrompt(e.target.value)}
+                        className="bg-slate-800/50 border-white/10 text-white"
+                      />
+                    </div>
+                    <Textarea
+                      placeholder="Hi {{FirstName}},\n\nYour outreach message here...\n\nBest regards,\n{{YourName}}"
+                      className="min-h-[140px] bg-slate-900/50 border-white/10 font-mono text-sm text-white"
+                      value={outreachTemplates[`${outreachOffering}-outreach`] || ''}
+                      onChange={(e) => {
+                        setOutreachTemplates({
+                          ...outreachTemplates,
+                          [`${outreachOffering}-outreach`]: e.target.value
+                        });
+                      }}
+                    />
+                    <div className="flex items-center gap-2 mt-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2 border-white/10 hover:bg-white/5 text-gray-300"
+                        onClick={() => {
+                          const link = window.prompt('Enter link to insert:');
+                          if (link) {
+                            const currentValue = outreachTemplates[`${outreachOffering}-outreach`] || '';
+                            setOutreachTemplates({
+                              ...outreachTemplates,
+                              [`${outreachOffering}-outreach`]: currentValue + ` ${link}`
+                            });
+                          }
+                        }}
+                      >
+                        <Link2 className="w-4 h-4" />
+                        Insert Link
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Follow-up Template */}
+                  {outreachMethod === 'ai' && (
+                    <div className="bg-slate-800/50 rounded-xl p-5 border border-white/10">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                            2
+                          </div>
+                          <Label className="text-base font-semibold text-white">Follow-up Template</Label>
+                        </div>
+                      </div>
+                      <div className="mb-4 space-y-2">
+                        <Label className="text-sm text-gray-300">Follow-up Strategy</Label>
+                        <div className="flex gap-4">
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              id="same-followup"
+                              name="followup-strategy"
+                              checked={followupStrategy[outreachOffering] !== 'custom'}
+                              onChange={() => setFollowupStrategy({ ...followupStrategy, [outreachOffering]: 'same' })}
+                              className="w-4 h-4 text-cyan-500"
+                            />
+                            <label htmlFor="same-followup" className="text-sm text-gray-300">Same template for all follow-ups</label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              id="custom-followup"
+                              name="followup-strategy"
+                              checked={followupStrategy[outreachOffering] === 'custom'}
+                              onChange={() => setFollowupStrategy({ ...followupStrategy, [outreachOffering]: 'custom' })}
+                              className="w-4 h-4 text-cyan-500"
+                            />
+                            <label htmlFor="custom-followup" className="text-sm text-gray-300">Customize each follow-up</label>
+                          </div>
+                        </div>
+                      </div>
+                      {followupStrategy[outreachOffering] === 'custom' ? (
+                        <div className="space-y-3">
+                          {Array.from({ length: parseInt(followUpCount === 'custom' ? customFollowUpCount : followUpCount || '1') }).map((_, idx) => (
+                            <div key={idx} className="bg-slate-900/50 rounded-lg p-3 border border-white/10">
+                              <Label className="text-sm font-medium mb-2 block text-gray-300">Follow-up {idx + 1}</Label>
+                              <Textarea
+                                placeholder={`Follow-up ${idx + 1} message...`}
+                                className="min-h-[100px] bg-slate-800/50 border-white/10 text-white"
+                                value={outreachTemplates[`${outreachOffering}-followup-${idx + 1}`] || ''}
+                                onChange={(e) => {
+                                  setOutreachTemplates({
+                                    ...outreachTemplates,
+                                    [`${outreachOffering}-followup-${idx + 1}`]: e.target.value
+                                  });
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <Textarea
+                          placeholder="Follow-up message template..."
+                          className="min-h-[140px] bg-slate-900/50 border-white/10 font-mono text-sm text-white"
+                          value={outreachTemplates[`${outreachOffering}-followup`] || ''}
+                          onChange={(e) => {
+                            setOutreachTemplates({
+                              ...outreachTemplates,
+                              [`${outreachOffering}-followup`]: e.target.value
+                            });
+                          }}
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {/* Closing Template */}
+                  <div className="bg-slate-800/50 rounded-xl p-5 border border-white/10">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-white font-bold text-sm">
+                        3
+                      </div>
+                      <Label className="text-base font-semibold text-white">Closing Template</Label>
+                    </div>
+                    <Textarea
+                      placeholder="Closing message template..."
+                      className="min-h-[140px] bg-slate-900/50 border-white/10 font-mono text-sm text-white"
+                      value={outreachTemplates[`${outreachOffering}-closing`] || ''}
+                      onChange={(e) => {
+                        setOutreachTemplates({
+                          ...outreachTemplates,
+                          [`${outreachOffering}-closing`]: e.target.value
+                        });
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 justify-end pt-4 border-t border-white/10">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setOutreachStep(1)}
+                  className="bg-white/5 border-white/10 text-white"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+                <Button 
+                  onClick={() => {
+                    console.log('Outreach Configuration:', {
+                      offering: outreachOffering,
+                      method: outreachMethod,
+                      channels: outreachChannels,
+                      followUpCount: followUpCount === 'custom' ? customFollowUpCount : followUpCount,
+                      followUpFrequency: followUpFrequency === 'custom' ? customFrequency : followUpFrequency,
+                      timeOfFollowUp,
+                      startTime,
+                      templates: outreachTemplates
+                    });
+                    setShowStartOutreach(false);
+                    // Reset states
+                    setOutreachStep(1);
+                    setOutreachOffering('');
+                    setOutreachMethod(null);
+                    setOutreachChannels([]);
+                    setFollowUpCount('');
+                    setFollowUpFrequency('');
+                    setTimeOfFollowUp('');
+                    setStartTime('');
+                    setCustomDate('');
+                    setCustomTime('');
+                    setTestFrom('');
+                    setTestTo('');
+                    setTestSubject('');
+                    setTestBody('');
+                    setCustomFollowUpCount('');
+                    setCustomFrequency('');
+                    setOutreachTemplates({});
+                    setOutreachCurrentOfferingIndex(0);
+                    setFollowupStrategy({});
+                    setOutreachAIPrompt('');
+                  }}
+                  className="bg-gradient-to-r from-cyan-500 to-blue-600"
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Complete Setup
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
 
