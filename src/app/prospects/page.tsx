@@ -51,7 +51,9 @@ import {
   ChevronRight,
   Bot,
   AlertCircle,
-  Target
+  Target,
+  FolderOpen,
+  XCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -93,10 +95,25 @@ export default function ProspectsPage() {
     notes: ''
   });
   
+  // Groups state
+  const [groups, setGroups] = useState<Array<{
+    id: string;
+    name: string;
+    description: string;
+    offering: string;
+    prospectIds: number[];
+  }>>([]);
+  const [showViewGroups, setShowViewGroups] = useState(false);
+  const [selectedGroupFilter, setSelectedGroupFilter] = useState<string | null>(null);
+  
   // Start Outreach states
   const [showStartOutreach, setShowStartOutreach] = useState(false);
-  const [outreachStep, setOutreachStep] = useState<1 | 2>(1);
+  const [outreachStep, setOutreachStep] = useState<0 | 0.5 | 1 | 2>(0);
   const [outreachOffering, setOutreachOffering] = useState('');
+  const [outreachGroup, setOutreachGroup] = useState('');
+  const [showCreateGroupInOutreach, setShowCreateGroupInOutreach] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupDescription, setNewGroupDescription] = useState('');
   const [outreachMethod, setOutreachMethod] = useState<'manual' | 'ai' | null>(null);
   const [outreachChannels, setOutreachChannels] = useState<string[]>([]);
   const [followUpCount, setFollowUpCount] = useState('');
@@ -520,7 +537,19 @@ If not interested → Thank and end call`);
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setShowStartOutreach(true)}
+                onClick={() => setShowViewGroups(true)}
+                className="px-4 py-2 rounded-lg bg-white/5 text-white text-sm font-medium border border-white/10 hover:bg-white/10"
+              >
+                <FolderOpen className="w-4 h-4 mr-2 inline" />
+                View Groups
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  setShowStartOutreach(true);
+                  setOutreachStep(0);
+                }}
                 className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-medium"
               >
                 <Play className="w-4 h-4 mr-2 inline" />
@@ -542,6 +571,20 @@ If not interested → Thank and end call`);
 
           {/* Filters */}
           <div className="flex items-center gap-4 mt-4">
+            {selectedGroupFilter && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+                <FolderOpen className="w-4 h-4 text-cyan-400" />
+                <span className="text-sm text-cyan-400">
+                  Filtered by: {groups.find(g => g.id === selectedGroupFilter)?.name}
+                </span>
+                <button
+                  onClick={() => setSelectedGroupFilter(null)}
+                  className="ml-2 p-1 rounded hover:bg-cyan-500/20"
+                >
+                  <X className="w-3 h-3 text-cyan-400" />
+                </button>
+              </div>
+            )}
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
@@ -673,7 +716,10 @@ If not interested → Thank and end call`);
                 </tr>
               </thead>
               <tbody>
-                {prospects.map((prospect, index) => (
+                {(selectedGroupFilter 
+                  ? prospects.filter(p => groups.find(g => g.id === selectedGroupFilter)?.prospectIds.includes(p.id))
+                  : prospects
+                ).map((prospect, index) => (
                   <motion.tr
                     key={prospect.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -1319,8 +1365,12 @@ If not interested → Thank and end call`);
         setShowStartOutreach(open);
         if (!open) {
           // Reset all states when dialog closes
-          setOutreachStep(1);
+          setOutreachStep(0);
           setOutreachOffering('');
+          setOutreachGroup('');
+          setShowCreateGroupInOutreach(false);
+          setNewGroupName('');
+          setNewGroupDescription('');
           setOutreachMethod(null);
           setOutreachChannels([]);
           setFollowUpCount('');
@@ -1347,17 +1397,17 @@ If not interested → Thank and end call`);
               <Zap className="w-5 h-5 text-cyan-400" />
               Start Outreach Campaign
               <Badge variant="secondary" className="ml-auto">
-                Step {outreachStep} of 2
+                {outreachStep === 0 ? 'Step 1 of 4' : outreachStep === 0.5 ? 'Step 2 of 4' : outreachStep === 1 ? 'Step 3 of 4' : 'Step 4 of 4'}
               </Badge>
             </DialogTitle>
             <DialogDescription className="text-gray-400">
-              {outreachStep === 1 ? 'Configure your outreach strategy' : 'Set up message templates'}
+              {outreachStep === 0 ? 'Select an offering' : outreachStep === 0.5 ? 'Select or create a group' : outreachStep === 1 ? 'Configure your outreach strategy' : 'Set up message templates'}
             </DialogDescription>
           </DialogHeader>
 
-          {outreachStep === 1 && (
+          {outreachStep === 0 && (
             <div className="space-y-6 py-4">
-              {/* Step 1: Offering Selection & Outreach Configuration */}
+              {/* Step 0: Offering Selection */}
               <div>
                 <Label className="text-gray-300 mb-3 block">Select Offering *</Label>
                 <Select value={outreachOffering} onValueChange={setOutreachOffering}>
@@ -1374,11 +1424,108 @@ If not interested → Thank and end call`);
                 </Select>
               </div>
 
-              {outreachOffering && (
-                <>
-                  <Separator className="bg-white/10" />
-                  
+              <div className="flex gap-2 justify-end pt-4 border-t border-white/10">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowStartOutreach(false)}
+                  className="bg-white/5 border-white/10 text-white"
+                >
+                  Cancel
+                </Button>
+                {outreachOffering && (
+                  <Button 
+                    onClick={() => setOutreachStep(0.5)}
+                    className="bg-gradient-to-r from-cyan-500 to-blue-600"
+                  >
+                    Continue <ChevronRight className="w-4 h-4 ml-2" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {outreachStep === 0.5 && (
+            <div className="space-y-6 py-4">
+              {/* Step 0.5: Group Selection */}
+              <div>
+                <Label className="text-gray-300 mb-3 block">Select Group *</Label>
+                {groups.filter(g => g.offering === outreachOffering).length > 0 ? (
+                  <Select value={outreachGroup} onValueChange={setOutreachGroup}>
+                    <SelectTrigger className="bg-slate-800/50 border-white/10 text-white">
+                      <SelectValue placeholder="Choose a group..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {groups.filter(g => g.offering === outreachOffering).map(group => (
+                        <SelectItem key={group.id} value={group.id}>
+                          {group.name} ({group.prospectIds.length} prospects)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="bg-slate-800/50 rounded-lg p-4 border border-white/10">
+                    <p className="text-sm text-gray-400 mb-3">No groups found for this offering. Create a new group.</p>
+                    <Button
+                      onClick={() => setShowCreateGroupInOutreach(true)}
+                      className="bg-gradient-to-r from-green-500 to-emerald-600"
+                    >
+                      <Users className="w-4 h-4 mr-2" />
+                      Create New Group
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {groups.filter(g => g.offering === outreachOffering).length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowCreateGroupInOutreach(true)}
+                    className="bg-white/5 border-white/10 text-white"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create New Group
+                  </Button>
+                </div>
+              )}
+
+              <div className="flex gap-2 justify-end pt-4 border-t border-white/10">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setOutreachStep(0)}
+                  className="bg-white/5 border-white/10 text-white"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+                {outreachGroup && (
+                  <Button 
+                    onClick={() => setOutreachStep(1)}
+                    className="bg-gradient-to-r from-cyan-500 to-blue-600"
+                  >
+                    Continue <ChevronRight className="w-4 h-4 ml-2" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {outreachStep === 1 && (
+            <div className="space-y-6 py-4">
+              {/* Step 1: Outreach Configuration */}
+              <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4 mb-4">
+                <div className="flex items-start gap-3">
+                  <Target className="w-5 h-5 text-cyan-400 mt-0.5 shrink-0" />
                   <div>
+                    <p className="text-sm font-medium text-cyan-400 mb-1">Selected Configuration</p>
+                    <p className="text-xs text-gray-400">
+                      Offering: {offerings.find(o => o.id === outreachOffering)?.name} | Group: {groups.find(g => g.id === outreachGroup)?.name}
+                    </p>
+                  </div>
+                </div>
+              </div>
+                  
+              <div>
                     <Label className="text-gray-300 mb-4 block">Choose Outreach Method *</Label>
                     <div className="grid grid-cols-2 gap-4">
                       <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
@@ -1628,30 +1775,19 @@ If not interested → Thank and end call`);
                       )}
                     </motion.div>
                   )}
-                </>
-              )}
 
               <div className="flex gap-2 justify-end pt-4 border-t border-white/10">
                 <Button 
                   variant="outline" 
-                  onClick={() => {
-                    setShowStartOutreach(false);
-                  }}
+                  onClick={() => setOutreachStep(0.5)}
                   className="bg-white/5 border-white/10 text-white"
                 >
-                  Cancel
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
                 </Button>
-                {outreachOffering && outreachMethod && (
+                {outreachMethod && (
                   <Button 
-                    onClick={() => {
-                      if (outreachMethod === 'manual') {
-                        // Skip to templates if manual
-                        setOutreachStep(2);
-                      } else {
-                        // Go to templates if AI automated
-                        setOutreachStep(2);
-                      }
-                    }}
+                    onClick={() => setOutreachStep(2)}
                     className="bg-gradient-to-r from-cyan-500 to-blue-600"
                   >
                     Continue to Templates <ChevronRight className="w-4 h-4 ml-2" />
@@ -1896,6 +2032,184 @@ If not interested → Thank and end call`);
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Group Dialog within Outreach */}
+      <Dialog open={showCreateGroupInOutreach} onOpenChange={setShowCreateGroupInOutreach}>
+        <DialogContent className="bg-slate-900 border-white/10 max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-white">Create New Group</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Select prospects for {offerings.find(o => o.id === outreachOffering)?.name}. All prospects must have the same offering.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label className="text-gray-300 mb-2 block">Group Name *</Label>
+              <Input
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                placeholder="e.g., Enterprise Q1 Prospects"
+                className="bg-slate-800/50 border-white/10 text-white placeholder:text-gray-500"
+              />
+            </div>
+            <div>
+              <Label className="text-gray-300 mb-2 block">Description (Optional)</Label>
+              <Textarea
+                value={newGroupDescription}
+                onChange={(e) => setNewGroupDescription(e.target.value)}
+                placeholder="Add a description for this group..."
+                className="bg-slate-800/50 border-white/10 text-white placeholder:text-gray-500 min-h-[80px]"
+              />
+            </div>
+            
+            <div className="bg-slate-800/50 rounded-lg p-4 border border-white/10">
+              <Label className="text-gray-300 mb-3 block">Select Prospects *</Label>
+              <div className="max-h-[300px] overflow-y-auto space-y-2">
+                {prospects.filter(p => p.offering === outreachOffering).map((prospect) => (
+                  <div key={prospect.id} className="flex items-center space-x-2 p-2 rounded-lg bg-slate-900/50 border border-white/10 hover:border-cyan-500/50 transition-colors">
+                    <Checkbox 
+                      id={`outreach-prospect-${prospect.id}`}
+                      checked={selectedProspects.includes(prospect.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          // Validation: Check if prospect has same offering
+                          if (prospect.offering === outreachOffering) {
+                            setSelectedProspects([...selectedProspects, prospect.id]);
+                          } else {
+                            alert(`Cannot add ${prospect.name}. All prospects in a group must have the same offering (${offerings.find(o => o.id === outreachOffering)?.name}).`);
+                          }
+                        } else {
+                          setSelectedProspects(selectedProspects.filter(id => id !== prospect.id));
+                        }
+                      }}
+                      className="data-[state=checked]:bg-cyan-500 data-[state=checked]:border-cyan-500"
+                    />
+                    <label htmlFor={`outreach-prospect-${prospect.id}`} className="text-sm text-gray-300 cursor-pointer select-none flex-1">
+                      {prospect.name} - {prospect.company}
+                    </label>
+                  </div>
+                ))}
+              </div>
+              {selectedProspects.length > 0 && (
+                <div className="mt-3 bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+                  <p className="text-sm text-green-400">
+                    {selectedProspects.length} prospect(s) selected
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 justify-end pt-4 border-t border-white/10">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowCreateGroupInOutreach(false);
+                  setNewGroupName('');
+                  setNewGroupDescription('');
+                  setSelectedProspects([]);
+                }}
+                className="bg-white/5 border-white/10 text-white"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => {
+                  if (newGroupName && selectedProspects.length > 0) {
+                    const newGroup = {
+                      id: `group-${Date.now()}`,
+                      name: newGroupName,
+                      description: newGroupDescription,
+                      offering: outreachOffering,
+                      prospectIds: selectedProspects
+                    };
+                    setGroups([...groups, newGroup]);
+                    setOutreachGroup(newGroup.id);
+                    setShowCreateGroupInOutreach(false);
+                    setNewGroupName('');
+                    setNewGroupDescription('');
+                    setSelectedProspects([]);
+                  }
+                }}
+                disabled={!newGroupName || selectedProspects.length === 0}
+                className="bg-gradient-to-r from-green-500 to-emerald-600 disabled:opacity-50"
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Create Group
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Groups Dialog */}
+      <Dialog open={showViewGroups} onOpenChange={setShowViewGroups}>
+        <DialogContent className="bg-slate-900 border-white/10 max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <FolderOpen className="w-5 h-5 text-cyan-400" />
+              View Groups
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Click on a group to filter the prospects table
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {groups.length === 0 ? (
+              <div className="text-center py-12 text-gray-400">
+                <FolderOpen className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium mb-2">No groups created yet</p>
+                <p className="text-sm">Create groups from the "Start Outreach" flow</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {groups.map((group) => (
+                  <Card 
+                    key={group.id}
+                    className={`cursor-pointer transition-all border-2 ${
+                      selectedGroupFilter === group.id
+                        ? 'border-cyan-500 shadow-lg shadow-cyan-500/20 bg-cyan-500/5'
+                        : 'border-white/10 hover:border-cyan-500/50 bg-slate-800/50'
+                    }`}
+                    onClick={() => {
+                      if (selectedGroupFilter === group.id) {
+                        setSelectedGroupFilter(null);
+                      } else {
+                        setSelectedGroupFilter(group.id);
+                      }
+                    }}
+                  >
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-white mb-1">{group.name}</CardTitle>
+                          <p className="text-xs text-gray-400 mb-2">{group.description || 'No description'}</p>
+                          <div className="flex items-center gap-4 text-sm">
+                            <span className="text-gray-400">
+                              Offering: <span className="text-cyan-400">{offerings.find(o => o.id === group.offering)?.name}</span>
+                            </span>
+                            <span className="text-gray-400">
+                              Prospects: <span className="text-cyan-400">{group.prospectIds.length}</span>
+                            </span>
+                          </div>
+                        </div>
+                        {selectedGroupFilter === group.id && (
+                          <XCircle 
+                            className="w-5 h-5 text-cyan-400 cursor-pointer hover:text-cyan-300"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedGroupFilter(null);
+                            }}
+                          />
+                        )}
+                      </div>
+                    </CardHeader>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
