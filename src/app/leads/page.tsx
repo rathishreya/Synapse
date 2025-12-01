@@ -108,7 +108,6 @@ import {
   BarChart2,
   PieChart,
   LineChart,
-  Separator,
   UserPlus
 } from 'lucide-react';
 import Link from 'next/link';
@@ -601,6 +600,26 @@ export default function LeadsPage() {
 
   const handleGenerateNurtureContent = () => {
     console.log('Generate AI nurture content');
+  };
+
+  // Bulk action handler
+  const applyBulkAction = (action: 'assign' | 'status' | 'priority') => {
+    if (action === 'assign') {
+      console.log(`Assigning ${selectedLeads.length} leads to ${bulkAssignTo}`);
+      setShowBulkAssign(false);
+      setSelectedLeads([]);
+      setBulkAssignTo('');
+    } else if (action === 'status') {
+      console.log(`Updating status for ${selectedLeads.length} leads to ${bulkStatus}`);
+      setShowBulkStatus(false);
+      setSelectedLeads([]);
+      setBulkStatus('');
+    } else if (action === 'priority') {
+      console.log(`Updating priority for ${selectedLeads.length} leads to ${bulkPriority}`);
+      setShowBulkPriority(false);
+      setSelectedLeads([]);
+      setBulkPriority('');
+    }
   };
 
   return (

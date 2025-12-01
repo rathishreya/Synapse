@@ -276,9 +276,9 @@ export default function ChatAssistant({ pageContext }: ChatAssistantProps) {
       setIsTyping(false);
 
       // Handle navigation actions
-      if (aiResponse.action?.type === 'navigate' && aiResponse.action.data) {
+      if (aiResponse.action?.type === 'navigate' && aiResponse.action?.data) {
         setTimeout(() => {
-          router.push(aiResponse.action.data);
+          router.push(aiResponse.action!.data);
         }, 500);
       }
 
