@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ChatAssistant from '@/components/chat-assistant';
 import {
   ArrowLeft,
   Mail,
@@ -376,6 +377,9 @@ export default function AnalyticsPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* AI Chat Assistant */}
+      <ChatAssistant />
     </div>
   );
 }

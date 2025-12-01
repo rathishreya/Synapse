@@ -11,7 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import ChatAssistant from '@/components/chat-assistant';
+import { 
   Settings,
   User,
   Users,
@@ -40,7 +42,28 @@ import {
   Languages,
   Phone,
   Activity,
-  MessageCircle
+  MessageCircle,
+  Copy,
+  Download,
+  Eye,
+  Zap,
+  BarChart3,
+  TrendingUp,
+  CheckCircle2,
+  XCircle,
+  Search,
+  Filter,
+  MoreVertical,
+  Send,
+  FileText,
+  Link2,
+  Sparkles as SparklesIcon,
+  Play,
+  Pause,
+  RefreshCw,
+  Bot,
+  ChevronRight,
+  ChevronLeft
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -66,6 +89,34 @@ export default function SettingsPage() {
   const [showAddOffering, setShowAddOffering] = useState(false);
   const [newOffering, setNewOffering] = useState({ name: '', templates: { outreach: '', followup: '', closing: '' } });
   const [editingOffering, setEditingOffering] = useState<number | null>(null);
+  const [viewingOffering, setViewingOffering] = useState<number | null>(null);
+  const [previewingTemplate, setPreviewingTemplate] = useState<{ offeringId: number; type: string } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedOfferingFilter, setSelectedOfferingFilter] = useState<string>('all');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
+  const [showTestEmail, setShowTestEmail] = useState<number | null>(null);
+  const [testEmailData, setTestEmailData] = useState({ to: '', subject: '', body: '' });
+  
+  // Outreach workflow states (same as prospects page)
+  const [outreachStep, setOutreachStep] = useState<0 | 0.5 | 1 | 2>(0);
+  const [outreachOffering, setOutreachOffering] = useState<string>('');
+  const [outreachMethod, setOutreachMethod] = useState<'manual' | 'ai' | null>(null);
+  const [outreachChannels, setOutreachChannels] = useState<string[]>([]);
+  const [followUpCount, setFollowUpCount] = useState('');
+  const [followUpFrequency, setFollowUpFrequency] = useState('');
+  const [timeOfFollowUp, setTimeOfFollowUp] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [customDate, setCustomDate] = useState('');
+  const [customTime, setCustomTime] = useState('');
+  const [testFrom, setTestFrom] = useState('');
+  const [testTo, setTestTo] = useState('');
+  const [testSubject, setTestSubject] = useState('');
+  const [testBody, setTestBody] = useState('');
+  const [customFollowUpCount, setCustomFollowUpCount] = useState('');
+  const [customFrequency, setCustomFrequency] = useState('');
+  const [outreachTemplates, setOutreachTemplates] = useState<Record<string, string>>({});
+  const [followupStrategy, setFollowupStrategy] = useState<Record<string, 'same' | 'custom'>>({});
+  const [outreachAIPrompt, setOutreachAIPrompt] = useState('');
 
   const handleLogout = () => {
     // Clear any stored auth data
@@ -118,7 +169,7 @@ export default function SettingsPage() {
                   <ArrowLeft className="w-5 h-5 text-gray-400" />
                 </motion.button>
               </Link>
-              <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4">
                 <motion.div
                   animate={{ rotate: [0, 360] }}
                   transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
@@ -131,17 +182,17 @@ export default function SettingsPage() {
                     Account Settings
                   </h1>
                   <p className="text-sm text-gray-400">Manage your profile and preferences</p>
-                </div>
+          </div>
               </div>
-            </div>
-            <div className="flex items-center gap-3">
+          </div>
+          <div className="flex items-center gap-3">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-medium shadow-lg shadow-cyan-500/30 hover:shadow-xl hover:shadow-cyan-500/40 transition-all"
               >
                 <Save className="w-4 h-4 mr-2 inline" />
-                Save Changes
+              Save Changes
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -153,9 +204,9 @@ export default function SettingsPage() {
                 Logout
               </motion.button>
             </div>
+            </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
 
       <div className="container mx-auto px-6 py-8 relative">
         <Tabs defaultValue="user" className="w-full">
@@ -168,15 +219,15 @@ export default function SettingsPage() {
               <TabsTrigger value="user" className="flex items-center gap-2 py-3 px-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white rounded-lg transition-all text-xs">
                 <User className="w-4 h-4" />
                 <span className="hidden xl:inline">Profile</span>
-              </TabsTrigger>
+            </TabsTrigger>
               <TabsTrigger value="security" className="flex items-center gap-2 py-3 px-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white rounded-lg transition-all text-xs">
                 <Shield className="w-4 h-4" />
                 <span className="hidden xl:inline">Security</span>
-              </TabsTrigger>
+            </TabsTrigger>
               <TabsTrigger value="prospects" className="flex items-center gap-2 py-3 px-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white rounded-lg transition-all text-xs">
                 <Target className="w-4 h-4" />
                 <span className="hidden xl:inline">Leads</span>
-              </TabsTrigger>
+            </TabsTrigger>
               <TabsTrigger value="outreach" className="flex items-center gap-2 py-3 px-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white rounded-lg transition-all text-xs">
                 <Mail className="w-4 h-4" />
                 <span className="hidden xl:inline">Outreach</span>
@@ -196,31 +247,31 @@ export default function SettingsPage() {
               <TabsTrigger value="notifications" className="flex items-center gap-2 py-3 px-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white rounded-lg transition-all text-xs">
                 <Bell className="w-4 h-4" />
                 <span className="hidden xl:inline">Notifications</span>
-              </TabsTrigger>
-            </TabsList>
+            </TabsTrigger>
+          </TabsList>
           </motion.div>
 
           {/* Profile Tab */}
           <TabsContent value="user" className="space-y-6">
             <AnimatePresence mode="wait">
-              <motion.div
+            <motion.div
                 key="user-tab"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
-                className="space-y-6"
-              >
+              className="space-y-6"
+            >
                 <Card className="border-white/10 bg-slate-900/50 backdrop-blur-xl shadow-2xl overflow-hidden">
                   <CardHeader className="border-b border-white/10 bg-gradient-to-r from-cyan-500/10 to-blue-600/10">
                     <CardTitle className="flex items-center gap-2 text-white">
                       <User className="w-5 h-5" />
-                      Personal Information
-                    </CardTitle>
+                    Personal Information
+                  </CardTitle>
                     <CardDescription className="text-gray-400">Update your personal details and contact information</CardDescription>
-                  </CardHeader>
+                </CardHeader>
                   <CardContent className="p-6 space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <motion.div whileFocus={{ scale: 1.02 }} className="space-y-2">
                         <Label htmlFor="userName" className="text-sm font-medium text-gray-300">User Name</Label>
                         <Input id="userName" placeholder="John Doe" className="bg-slate-800/50 border-white/10 text-white focus:border-cyan-500" />
@@ -267,7 +318,7 @@ export default function SettingsPage() {
                       <Label className="text-sm font-medium text-gray-300">Customer Pain Points <span className="text-xs text-gray-500">(At least 3)</span></Label>
                       {painPoints.map((point, index) => (
                         <motion.div key={`pain-${index}`} whileFocus={{ scale: 1.02 }}>
-                          <Input
+                      <Input 
                             value={point}
                             onChange={(e) => {
                               const newPoints = [...painPoints];
@@ -287,7 +338,7 @@ export default function SettingsPage() {
                       <Label className="text-sm font-medium text-gray-300">Value Proposition <span className="text-xs text-gray-500">(At least 3 benefits)</span></Label>
                       {valueProps.map((prop, index) => (
                         <motion.div key={`value-${index}`} whileFocus={{ scale: 1.02 }}>
-                          <Input
+                      <Input 
                             value={prop}
                             onChange={(e) => {
                               const newProps = [...valueProps];
@@ -328,15 +379,20 @@ export default function SettingsPage() {
                         </CardTitle>
                         <CardDescription className="text-gray-400">Manage your product/service offerings and their templates</CardDescription>
                       </div>
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setShowAddOffering(true)}
-                        className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-medium shadow-lg"
-                      >
-                        <Plus className="w-4 h-4 mr-2 inline" />
-                        Add Offering
-                      </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => {
+                        setEditingOffering(-1); // Use -1 to indicate "new offering"
+                        setOutreachStep(0);
+                        setOutreachOffering('');
+                        setNewOffering({ name: '', templates: { outreach: '', followup: '', closing: '' } });
+                      }}
+                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-medium shadow-lg"
+                    >
+                      <Plus className="w-4 h-4 mr-2 inline" />
+                      Add Offering
+                    </motion.button>
                     </div>
                   </CardHeader>
                   <CardContent className="p-6 space-y-4">
@@ -378,75 +434,6 @@ export default function SettingsPage() {
                   </CardContent>
                 </Card>
 
-                {/* Add Offering Modal */}
-                {showAddOffering && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-                    onClick={() => setShowAddOffering(false)}
-                  >
-                    <motion.div
-                      initial={{ scale: 0.9, y: 20 }}
-                      animate={{ scale: 1, y: 0 }}
-                      onClick={(e) => e.stopPropagation()}
-                      className="w-full max-w-2xl bg-slate-900 border border-white/10 rounded-xl p-6 shadow-2xl"
-                    >
-                      <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-xl font-bold text-white">Add New Offering</h3>
-                        <button onClick={() => setShowAddOffering(false)} className="p-2 hover:bg-white/5 rounded-lg">
-                          <X className="w-5 h-5 text-gray-400" />
-                        </button>
-                      </div>
-                      <div className="space-y-4">
-                        <div>
-                          <Label className="text-gray-300 mb-2 block">Offering Name</Label>
-                          <Input
-                            value={newOffering.name}
-                            onChange={(e) => setNewOffering({ ...newOffering, name: e.target.value })}
-                            placeholder="E.g., Enterprise Solutions"
-                            className="bg-slate-800/50 border-white/10 text-white"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-gray-300 mb-2 block">Outreach Template</Label>
-                          <Textarea
-                            value={newOffering.templates.outreach}
-                            onChange={(e) => setNewOffering({ ...newOffering, templates: { ...newOffering.templates, outreach: e.target.value } })}
-                            placeholder="Your outreach message..."
-                            className="bg-slate-800/50 border-white/10 text-white min-h-[100px]"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-gray-300 mb-2 block">Follow-up Template</Label>
-                          <Textarea
-                            value={newOffering.templates.followup}
-                            onChange={(e) => setNewOffering({ ...newOffering, templates: { ...newOffering.templates, followup: e.target.value } })}
-                            placeholder="Your follow-up message..."
-                            className="bg-slate-800/50 border-white/10 text-white min-h-[100px]"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-gray-300 mb-2 block">Closing Template</Label>
-                          <Textarea
-                            value={newOffering.templates.closing}
-                            onChange={(e) => setNewOffering({ ...newOffering, templates: { ...newOffering.templates, closing: e.target.value } })}
-                            placeholder="Your closing message..."
-                            className="bg-slate-800/50 border-white/10 text-white min-h-[100px]"
-                          />
-                        </div>
-                        <motion.button
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={addOffering}
-                          className="w-full py-3 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-medium"
-                        >
-                          Add Offering
-                        </motion.button>
-                      </div>
-                    </motion.div>
-                  </motion.div>
-                )}
 
                 {/* Rest of Lead Generation settings */}
                 <Card className="border-white/10 bg-slate-900/50 backdrop-blur-xl shadow-2xl overflow-hidden">
@@ -499,7 +486,7 @@ export default function SettingsPage() {
                         <Label htmlFor="senderEmail" className="text-sm font-medium text-gray-300">Sender Email Address *</Label>
                         <Input 
                           id="senderEmail" 
-                          type="email" 
+                        type="email"
                           placeholder="sales@yourcompany.com" 
                           className="bg-slate-800/50 border-white/10 text-white focus:border-cyan-500" 
                         />
@@ -551,75 +538,26 @@ export default function SettingsPage() {
                     <Separator className="bg-white/10" />
 
                     <div className="space-y-4">
-                      <h4 className="text-sm font-semibold text-white">SMTP Configuration (Advanced)</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="smtpHost" className="text-sm font-medium text-gray-300">SMTP Host</Label>
-                          <Input 
-                            id="smtpHost" 
-                            placeholder="smtp.gmail.com" 
-                            className="bg-slate-800/50 border-white/10 text-white focus:border-cyan-500" 
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="smtpPort" className="text-sm font-medium text-gray-300">SMTP Port</Label>
-                          <Input 
-                            id="smtpPort" 
-                            placeholder="587" 
-                            type="number"
-                            className="bg-slate-800/50 border-white/10 text-white focus:border-cyan-500" 
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="smtpUsername" className="text-sm font-medium text-gray-300">SMTP Username</Label>
-                          <Input 
-                            id="smtpUsername" 
-                            placeholder="your-email@gmail.com" 
-                            className="bg-slate-800/50 border-white/10 text-white focus:border-cyan-500" 
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="smtpPassword" className="text-sm font-medium text-gray-300">SMTP Password</Label>
-                          <Input 
-                            id="smtpPassword" 
-                            type="password" 
-                            placeholder="••••••••••••••••" 
-                            className="bg-slate-800/50 border-white/10 text-white focus:border-cyan-500" 
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-3 p-4 rounded-lg bg-slate-800/50 border border-white/10">
-                        <Checkbox id="smtpTLS" defaultChecked className="data-[state=checked]:bg-cyan-500 border-white/20" />
-                        <label htmlFor="smtpTLS" className="text-sm font-medium text-gray-300 cursor-pointer flex-1">Enable TLS/SSL</label>
-                      </div>
-                      <Button className="w-full bg-gradient-to-r from-cyan-500 to-blue-600">
-                        Test SMTP Connection
-                      </Button>
-                    </div>
-
-                    <Separator className="bg-white/10" />
-
-                    <div className="space-y-4">
                       <h4 className="text-sm font-semibold text-white">Email Sending Limits</h4>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="emailsPerDay" className="text-sm font-medium text-gray-300">Emails Per Day</Label>
-                          <Input 
+                      <Input 
                             id="emailsPerDay" 
                             type="number" 
                             placeholder="50" 
                             className="bg-slate-800/50 border-white/10 text-white focus:border-cyan-500" 
-                          />
-                        </div>
-                        <div className="space-y-2">
+                      />
+                    </div>
+                    <div className="space-y-2">
                           <Label htmlFor="emailsPerHour" className="text-sm font-medium text-gray-300">Emails Per Hour</Label>
-                          <Input 
+                      <Input 
                             id="emailsPerHour" 
                             type="number" 
                             placeholder="10" 
                             className="bg-slate-800/50 border-white/10 text-white focus:border-cyan-500" 
-                          />
-                        </div>
+                      />
+                    </div>
                         <div className="space-y-2">
                           <Label htmlFor="delayBetweenEmails" className="text-sm font-medium text-gray-300">Delay (seconds)</Label>
                           <Input 
@@ -631,9 +569,9 @@ export default function SettingsPage() {
                         </div>
                       </div>
                       <p className="text-xs text-gray-500">Set limits to avoid being flagged as spam</p>
-                    </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </CardContent>
+              </Card>
 
                 {/* Cold Calling Configuration */}
                 <Card className="border-white/10 bg-slate-900/50 backdrop-blur-xl shadow-2xl overflow-hidden">
@@ -655,7 +593,7 @@ export default function SettingsPage() {
                           className="bg-slate-800/50 border-white/10 text-white focus:border-cyan-500" 
                         />
                         <p className="text-xs text-gray-500">Your outbound calling number</p>
-                      </motion.div>
+            </motion.div>
                       <motion.div whileFocus={{ scale: 1.02 }} className="space-y-2">
                         <Label htmlFor="callerId" className="text-sm font-medium text-gray-300">Caller ID Name</Label>
                         <Input 
@@ -769,15 +707,177 @@ export default function SettingsPage() {
                   </CardContent>
                 </Card>
 
+                {/* Analytics by Offering */}
+                <Card className="border-white/10 bg-slate-900/50 backdrop-blur-xl shadow-2xl overflow-hidden">
+                  <CardHeader className="border-b border-white/10 bg-gradient-to-r from-cyan-500/10 to-blue-600/10">
+                    <CardTitle className="flex items-center gap-2 text-white">
+                      <Activity className="w-5 h-5" />
+                      Analytics by Offering
+                    </CardTitle>
+                    <CardDescription className="text-gray-400">Track performance metrics and conversions for each offering</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-6">
+                    {offerings.map((offering, index) => {
+                      // Mock analytics data - in real app, this would come from API
+                      const analytics = {
+                        totalProspects: 245,
+                        convertedToLeads: 89,
+                        conversionRate: 36.3,
+                        stageBreakdown: {
+                          'New': 45,
+                          'Contacted': 78,
+                          'Follow-up': 56,
+                          'Meeting': 34,
+                          'Proposal': 22,
+                          'Won': 8,
+                          'Lost': 2
+                        },
+                        avgTimeToConvert: '4.2 days',
+                        emailMetrics: {
+                          sent: 1234,
+                          opened: 567,
+                          replied: 89,
+                          openRate: 46.0,
+                          replyRate: 7.2
+                        },
+                        callMetrics: {
+                          attempted: 234,
+                          connected: 156,
+                          converted: 45,
+                          connectionRate: 66.7,
+                          conversionRate: 19.2
+                        }
+                      };
+                      
+                      return (
+            <motion.div
+                          key={offering.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className="p-5 rounded-xl bg-slate-800/50 border border-white/10 hover:border-cyan-500/50 transition-all"
+                        >
+                          <h3 className="text-lg font-semibold text-white mb-4">{offering.name}</h3>
+                          
+                          {/* Conversion Metrics */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div className="p-4 rounded-lg bg-gradient-to-br from-cyan-500/10 to-blue-600/10 border border-cyan-500/30">
+                              <p className="text-xs text-gray-400 mb-1">Total Prospects</p>
+                              <p className="text-2xl font-bold text-white">{analytics.totalProspects}</p>
+                            </div>
+                            <div className="p-4 rounded-lg bg-gradient-to-br from-emerald-500/10 to-teal-600/10 border border-emerald-500/30">
+                              <p className="text-xs text-gray-400 mb-1">Converted to Leads</p>
+                              <p className="text-2xl font-bold text-white">{analytics.convertedToLeads}</p>
+                              <p className="text-xs text-emerald-400 mt-1">{analytics.conversionRate}% conversion rate</p>
+                            </div>
+                            <div className="p-4 rounded-lg bg-gradient-to-br from-purple-500/10 to-pink-600/10 border border-purple-500/30">
+                              <p className="text-xs text-gray-400 mb-1">Avg Time to Convert</p>
+                              <p className="text-2xl font-bold text-white">{analytics.avgTimeToConvert}</p>
+                            </div>
+                          </div>
+
+                          {/* Stage Breakdown */}
+                          <div className="mb-6">
+                            <h4 className="text-sm font-semibold text-white mb-3">Stage Breakdown</h4>
+                            <div className="space-y-2">
+                              {Object.entries(analytics.stageBreakdown).map(([stage, count]) => {
+                                const percentage = (count / analytics.totalProspects) * 100;
+                                return (
+                                  <div key={stage} className="space-y-1">
+                                    <div className="flex items-center justify-between text-sm">
+                                      <span className="text-gray-300">{stage}</span>
+                                      <span className="text-white font-medium">{count} ({percentage.toFixed(1)}%)</span>
+                                    </div>
+                                    <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                                      <motion.div
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${percentage}%` }}
+                                        transition={{ duration: 0.5, delay: index * 0.1 }}
+                                        className={`h-full ${
+                                          stage === 'Won' ? 'bg-gradient-to-r from-green-500 to-emerald-600' :
+                                          stage === 'Lost' ? 'bg-gradient-to-r from-red-500 to-pink-600' :
+                                          stage === 'Proposal' ? 'bg-gradient-to-r from-yellow-500 to-orange-600' :
+                                          stage === 'Meeting' ? 'bg-gradient-to-r from-blue-500 to-cyan-600' :
+                                          'bg-gradient-to-r from-cyan-500 to-blue-600'
+                                        }`}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Email Metrics */}
+                          <div className="mb-6">
+                            <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                              <Mail className="w-4 h-4" />
+                              Email Metrics
+                            </h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                              <div className="p-3 rounded-lg bg-slate-900/50">
+                                <p className="text-xs text-gray-400">Sent</p>
+                                <p className="text-lg font-bold text-white">{analytics.emailMetrics.sent}</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-slate-900/50">
+                                <p className="text-xs text-gray-400">Opened</p>
+                                <p className="text-lg font-bold text-white">{analytics.emailMetrics.opened}</p>
+                                <p className="text-xs text-cyan-400">{analytics.emailMetrics.openRate}%</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-slate-900/50">
+                                <p className="text-xs text-gray-400">Replied</p>
+                                <p className="text-lg font-bold text-white">{analytics.emailMetrics.replied}</p>
+                                <p className="text-xs text-emerald-400">{analytics.emailMetrics.replyRate}%</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-slate-900/50">
+                                <p className="text-xs text-gray-400">Open Rate</p>
+                                <p className="text-lg font-bold text-emerald-400">{analytics.emailMetrics.openRate}%</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Call Metrics */}
+                          <div>
+                            <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                              <Phone className="w-4 h-4" />
+                              Call Metrics
+                            </h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                              <div className="p-3 rounded-lg bg-slate-900/50">
+                                <p className="text-xs text-gray-400">Attempted</p>
+                                <p className="text-lg font-bold text-white">{analytics.callMetrics.attempted}</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-slate-900/50">
+                                <p className="text-xs text-gray-400">Connected</p>
+                                <p className="text-lg font-bold text-white">{analytics.callMetrics.connected}</p>
+                                <p className="text-xs text-cyan-400">{analytics.callMetrics.connectionRate}%</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-slate-900/50">
+                                <p className="text-xs text-gray-400">Converted</p>
+                                <p className="text-lg font-bold text-white">{analytics.callMetrics.converted}</p>
+                                <p className="text-xs text-emerald-400">{analytics.callMetrics.conversionRate}%</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-slate-900/50">
+                                <p className="text-xs text-gray-400">Conversion Rate</p>
+                                <p className="text-lg font-bold text-emerald-400">{analytics.callMetrics.conversionRate}%</p>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+
                 {/* Campaign Automation Settings */}
                 <Card className="border-white/10 bg-slate-900/50 backdrop-blur-xl shadow-2xl overflow-hidden">
                   <CardHeader className="border-b border-white/10 bg-gradient-to-r from-cyan-500/10 to-blue-600/10">
                     <CardTitle className="flex items-center gap-2 text-white">
                       <Activity className="w-5 h-5" />
                       Campaign Automation
-                    </CardTitle>
+                  </CardTitle>
                     <CardDescription className="text-gray-400">Configure automation settings for your campaigns</CardDescription>
-                  </CardHeader>
+                </CardHeader>
                   <CardContent className="p-6 space-y-6">
                     <div className="space-y-4">
                       <h4 className="text-sm font-semibold text-white">Automation Mode</h4>
@@ -816,29 +916,29 @@ export default function SettingsPage() {
                           <div className="w-4 h-4 rounded-full border-2 border-white/20" />
                         </motion.button>
                       </div>
-                    </div>
+                      </div>
 
                     <Separator className="bg-white/10" />
 
                     <div className="space-y-4">
                       <h4 className="text-sm font-semibold text-white">Follow-up Configuration</h4>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="space-y-2">
+                      <div className="space-y-2">
                           <Label htmlFor="followUpCount" className="text-sm font-medium text-gray-300">Number of Follow-ups</Label>
                           <Select defaultValue="3">
                             <SelectTrigger className="bg-slate-800/50 border-white/10 text-white">
                               <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
+                          </SelectTrigger>
+                          <SelectContent>
                               <SelectItem value="1">1 Follow-up</SelectItem>
                               <SelectItem value="2">2 Follow-ups</SelectItem>
                               <SelectItem value="3">3 Follow-ups</SelectItem>
                               <SelectItem value="4">4 Follow-ups</SelectItem>
                               <SelectItem value="5">5 Follow-ups</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
                           <Label htmlFor="followUpInterval" className="text-sm font-medium text-gray-300">Interval (days)</Label>
                           <Input 
                             id="followUpInterval" 
@@ -847,8 +947,8 @@ export default function SettingsPage() {
                             defaultValue="3"
                             className="bg-slate-800/50 border-white/10 text-white focus:border-cyan-500" 
                           />
-                        </div>
-                        <div className="space-y-2">
+                      </div>
+                      <div className="space-y-2">
                           <Label htmlFor="followUpTime" className="text-sm font-medium text-gray-300">Send Time</Label>
                           <Input 
                             id="followUpTime" 
@@ -856,9 +956,9 @@ export default function SettingsPage() {
                             defaultValue="10:00"
                             className="bg-slate-800/50 border-white/10 text-white focus:border-cyan-500" 
                           />
-                        </div>
                       </div>
                     </div>
+                  </div>
 
                     <Separator className="bg-white/10" />
 
@@ -887,15 +987,15 @@ export default function SettingsPage() {
                               className="data-[state=checked]:bg-cyan-500 border-white/20 w-6 h-6" 
                             />
                           </motion.div>
-                        ))}
-                      </div>
+                      ))}
                     </div>
+                  </div>
 
                     <Separator className="bg-white/10" />
 
                     <div className="space-y-4">
                       <h4 className="text-sm font-semibold text-white">Smart Features</h4>
-                      <div className="space-y-3">
+                    <div className="space-y-3">
                         <div className="flex items-center justify-between p-4 rounded-lg bg-slate-800/50 border border-white/10">
                           <div className="flex-1">
                             <h4 className="font-semibold text-white text-sm mb-1">AI Content Generation</h4>
@@ -928,29 +1028,556 @@ export default function SettingsPage() {
                     </div>
                   </CardContent>
                 </Card>
-              </motion.div>
+
+                {/* Full Outreach Workflow Dialog */}
+                <Dialog open={editingOffering !== null} onOpenChange={(open) => {
+                  if (!open) {
+                    setEditingOffering(null);
+                    setOutreachStep(0);
+                    setOutreachOffering('');
+                    setOutreachMethod(null);
+                    setOutreachChannels([]);
+                    setFollowUpCount('');
+                    setFollowUpFrequency('');
+                    setTimeOfFollowUp('');
+                    setStartTime('');
+                    setCustomDate('');
+                    setCustomTime('');
+                    setTestFrom('');
+                    setTestTo('');
+                    setTestSubject('');
+                    setTestBody('');
+                    setCustomFollowUpCount('');
+                    setCustomFrequency('');
+                    setOutreachTemplates({});
+                    setFollowupStrategy({});
+                    setOutreachAIPrompt('');
+                  }
+                }}>
+                  <DialogContent className="bg-slate-900 border-white/10 max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="text-white flex items-center gap-2">
+                        <Zap className="w-5 h-5 text-cyan-400" />
+                        {editingOffering !== null && offerings.find(o => o.id === editingOffering) 
+                          ? `Configure Outreach: ${offerings.find(o => o.id === editingOffering)?.name}`
+                          : 'Add New Offering & Configure Outreach'}
+                        <Badge variant="secondary" className="ml-auto">
+                          {outreachStep === 0 ? 'Step 1 of 3' : outreachStep === 1 ? 'Step 2 of 3' : 'Step 3 of 3'}
+                        </Badge>
+                      </DialogTitle>
+                      <DialogDescription className="text-gray-400">
+                        {outreachStep === 0 ? 'Select or create an offering' : outreachStep === 1 ? 'Configure your outreach strategy' : 'Set up message templates'}
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    {outreachStep === 0 && (
+                      <div className="space-y-6 py-4">
+                        {editingOffering === -1 ? (
+                          <div>
+                            <Label className="text-gray-300 mb-3 block">Offering Name *</Label>
+                            <Input
+                              value={newOffering.name}
+                              onChange={(e) => setNewOffering({ ...newOffering, name: e.target.value })}
+                              placeholder="E.g., Enterprise Solutions"
+                              className="bg-slate-800/50 border-white/10 text-white"
+                            />
+                        </div>
+                        ) : (
+                          <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4">
+                            <p className="text-sm text-cyan-400">
+                              Configuring: {offerings.find(o => o.id === editingOffering)?.name}
+                            </p>
+                    </div>
+                        )}
+
+                        <div className="flex gap-2 justify-end pt-4 border-t border-white/10">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => {
+                              setEditingOffering(null);
+                              setOutreachStep(0);
+                            }}
+                            className="bg-white/5 border-white/10 text-white"
+                          >
+                            Cancel
+                          </Button>
+                          {((editingOffering === -1 && newOffering.name) || (editingOffering !== null && editingOffering !== -1)) && (
+                            <Button 
+                              onClick={() => {
+                                if (editingOffering === -1 && newOffering.name) {
+                                  const newId = Date.now();
+                                  setOfferings([...offerings, { 
+                                    id: newId, 
+                                    name: newOffering.name,
+                                    templates: { outreach: '', followup: '', closing: '' },
+                                    followupCount: '3',
+                                    followupFrequency: 'weekly'
+                                  }]);
+                                  setEditingOffering(newId);
+                                  setOutreachOffering(newId.toString());
+                                  setNewOffering({ name: '', templates: { outreach: '', followup: '', closing: '' } });
+                                } else if (editingOffering !== null && editingOffering !== -1) {
+                                  setOutreachOffering(editingOffering.toString());
+                                }
+                                setOutreachStep(1);
+                              }}
+                              className="bg-gradient-to-r from-cyan-500 to-blue-600"
+                            >
+                              Continue <ChevronRight className="w-4 h-4 ml-2" />
+                            </Button>
+                          )}
+                  </div>
+                      </div>
+                    )}
+
+                    {outreachStep === 1 && editingOffering !== null && editingOffering !== -1 && (
+                      <div className="space-y-6 py-4">
+                        <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4 mb-4">
+                          <div className="flex items-start gap-3">
+                            <Target className="w-5 h-5 text-cyan-400 mt-0.5 shrink-0" />
+                            <div>
+                              <p className="text-sm font-medium text-cyan-400 mb-1">Selected Offering</p>
+                              <p className="text-xs text-gray-400">
+                                {offerings.find(o => o.id === editingOffering)?.name}
+                              </p>
+                  </div>
+                          </div>
+                        </div>
+                            
+                        <div>
+                          <Label className="text-gray-300 mb-4 block">Choose Outreach Method *</Label>
+                          <div className="grid grid-cols-2 gap-4">
+                            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                              <Card 
+                                className={`cursor-pointer transition-all border-2 ${
+                                  outreachMethod === 'manual' 
+                                    ? 'border-cyan-500 shadow-lg shadow-cyan-500/20 bg-cyan-500/5' 
+                                    : 'border-white/10 hover:border-cyan-500/50 bg-slate-800/50'
+                                }`}
+                                onClick={() => setOutreachMethod('manual')}
+                              >
+                                <CardHeader className="text-center pb-4">
+                                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 mx-auto mb-3">
+                                    <User className="w-6 h-6 text-white" />
+                                  </div>
+                                  <CardTitle className="text-base mb-1 text-white">Manual</CardTitle>
+                                  <p className="text-xs text-gray-400">You control every outreach interaction</p>
+                                </CardHeader>
+              </Card>
+            </motion.div>
+
+                            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                              <Card 
+                                className={`cursor-pointer transition-all border-2 ${
+                                  outreachMethod === 'ai' 
+                                    ? 'border-cyan-500 shadow-lg shadow-cyan-500/20 bg-cyan-500/5' 
+                                    : 'border-white/10 hover:border-cyan-500/50 bg-slate-800/50'
+                                }`}
+                                onClick={() => setOutreachMethod('ai')}
+                              >
+                                <CardHeader className="text-center pb-4">
+                                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 mx-auto mb-3">
+                                    <Bot className="w-6 h-6 text-white" />
+                                  </div>
+                                  <CardTitle className="text-base mb-1 text-white">AI Automated</CardTitle>
+                                  <p className="text-xs text-gray-400">Let AI handle outreach automatically</p>
+                </CardHeader>
+                              </Card>
+                            </motion.div>
+                          </div>
+                        </div>
+
+                        {outreachMethod === 'ai' && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            className="space-y-4"
+                          >
+                            <Separator className="bg-white/10" />
+
+                            <div className="bg-slate-800/50 rounded-xl p-4 border border-white/10">
+                              <Label className="text-gray-300 mb-3 block">Outreach Channels</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                                {['Cold Calling', 'Cold Mailing', 'LinkedIn DM', 'WhatsApp DM'].map((channel) => (
+                                  <div key={channel} className="flex items-center space-x-2 p-3 rounded-lg bg-slate-900/50 border border-white/10 hover:border-cyan-500/50 transition-colors">
+                          <Checkbox 
+                                      id={`channel-${channel}`}
+                                      checked={outreachChannels.includes(channel)}
+                                      onCheckedChange={(checked) => {
+                                        if (checked) {
+                                          setOutreachChannels([...outreachChannels, channel]);
+                                        } else {
+                                          setOutreachChannels(outreachChannels.filter(c => c !== channel));
+                                        }
+                                      }}
+                                      className="data-[state=checked]:bg-cyan-500 data-[state=checked]:border-cyan-500"
+                                    />
+                                    <label htmlFor={`channel-${channel}`} className="text-sm text-gray-300 cursor-pointer select-none flex-1">
+                                      {channel}
+                                    </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="bg-slate-800/50 rounded-xl p-4 border border-white/10">
+                                <Label htmlFor="followUpCount" className="text-gray-300 mb-3 block">Number of Follow-ups</Label>
+                                <Select value={followUpCount} onValueChange={setFollowUpCount}>
+                                  <SelectTrigger id="followUpCount" className="bg-slate-900/50 border-white/10 text-white">
+                                    <SelectValue placeholder="Select number" />
+                        </SelectTrigger>
+                        <SelectContent>
+                                    <SelectItem value="1">1 Follow-up</SelectItem>
+                                    <SelectItem value="2">2 Follow-ups</SelectItem>
+                                    <SelectItem value="3">3 Follow-ups</SelectItem>
+                          <SelectItem value="custom">Custom</SelectItem>
+                        </SelectContent>
+                      </Select>
+                                {followUpCount === 'custom' && (
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    placeholder="Enter number"
+                                    value={customFollowUpCount}
+                                    onChange={(e) => setCustomFollowUpCount(e.target.value)}
+                                    className="mt-3 bg-slate-900/50 border-white/10 text-white"
+                                  />
+                                )}
+                    </div>
+
+                              <div className="bg-slate-800/50 rounded-xl p-4 border border-white/10">
+                                <Label htmlFor="followUpFrequency" className="text-gray-300 mb-3 block">Follow-up Frequency</Label>
+                                <Select value={followUpFrequency} onValueChange={setFollowUpFrequency}>
+                                  <SelectTrigger id="followUpFrequency" className="bg-slate-900/50 border-white/10 text-white">
+                          <SelectValue placeholder="Select frequency" />
+                        </SelectTrigger>
+                        <SelectContent>
+                                    <SelectItem value="weekly">Weekly</SelectItem>
+                                    <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                                    <SelectItem value="monthly">Monthly</SelectItem>
+                                    <SelectItem value="custom">Custom</SelectItem>
+                        </SelectContent>
+                      </Select>
+                                {followUpFrequency === 'custom' && (
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    placeholder="Enter days"
+                                    value={customFrequency}
+                                    onChange={(e) => setCustomFrequency(e.target.value)}
+                                    className="mt-3 bg-slate-900/50 border-white/10 text-white"
+                                  />
+                                )}
+                    </div>
+                  </div>
+
+                            <div className="bg-slate-800/50 rounded-xl p-4 border border-white/10">
+                              <Label htmlFor="timeOfFollowUp" className="text-gray-300 mb-3 block">Time of Follow-up</Label>
+                              <Input
+                                id="timeOfFollowUp"
+                                type="time"
+                                value={timeOfFollowUp}
+                                onChange={(e) => setTimeOfFollowUp(e.target.value)}
+                                className="bg-slate-900/50 border-white/10 text-white"
+                              />
+                            </div>
+                          </motion.div>
+                        )}
+
+                        <div className="flex gap-2 justify-end pt-4 border-t border-white/10">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setOutreachStep(0)}
+                            className="bg-white/5 border-white/10 text-white"
+                          >
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back
+                          </Button>
+                          {outreachMethod && (
+                            <Button 
+                              onClick={() => setOutreachStep(2)}
+                              className="bg-gradient-to-r from-cyan-500 to-blue-600"
+                            >
+                              Continue to Templates <ChevronRight className="w-4 h-4 ml-2" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {outreachStep === 2 && editingOffering !== null && editingOffering !== -1 && (
+                      <div className="space-y-6 py-4">
+                        <div className="text-center mb-6">
+                          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 mx-auto mb-3">
+                            <Mail className="w-6 h-6 text-white" />
+                          </div>
+                          <h3 className="text-xl font-bold text-white mb-2">
+                            Configure Templates for {offerings.find(o => o.id === editingOffering)?.name}
+                          </h3>
+                          <p className="text-sm text-gray-400">Set up your outreach, follow-up, and closing templates</p>
+                        </div>
+
+                        <div className="space-y-6">
+                          {/* Outreach Template */}
+                          <div className="bg-slate-800/50 rounded-xl p-5 border border-white/10">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
+                                  1
+                                </div>
+                                <Label className="text-base font-semibold text-white">Outreach Template</Label>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-2 border-cyan-500/30 hover:bg-cyan-500/10 text-cyan-400"
+                                onClick={() => {
+                                  const prompt = outreachAIPrompt || '';
+                                  const aiTemplate = `Hi {{FirstName}},\n\n${prompt || `I noticed your company might benefit from our ${offerings.find(o => o.id === editingOffering)?.name}.`}\n\nWould you be open to a quick chat?\n\nBest regards,\n{{YourName}}`;
+                                  const offering = offerings.find(o => o.id === editingOffering);
+                                  if (offering) {
+                                    setOfferings(offerings.map(o => 
+                                      o.id === offering.id ? { 
+                                        ...o, 
+                                        templates: { ...o.templates, outreach: aiTemplate }
+                                      } : o
+                                    ));
+                                  }
+                                  setOutreachAIPrompt('');
+                                }}
+                              >
+                                <SparklesIcon className="w-4 h-4" />
+                                Generate with AI
+                              </Button>
+                            </div>
+                            <div className="bg-slate-900/50 rounded-lg p-3 border border-white/10 mb-3">
+                              <Label htmlFor="outreach-ai-prompt" className="text-sm font-medium mb-2 block text-gray-300">
+                                AI Generation Prompt (Optional)
+                              </Label>
+                              <Input
+                                id="outreach-ai-prompt"
+                                placeholder="E.g., Focus on cost savings and automation benefits..."
+                                value={outreachAIPrompt}
+                                onChange={(e) => setOutreachAIPrompt(e.target.value)}
+                                className="bg-slate-800/50 border-white/10 text-white"
+                              />
+                            </div>
+                            <Textarea
+                              placeholder="Hi {{FirstName}},\n\nYour outreach message here...\n\nBest regards,\n{{YourName}}"
+                              className="min-h-[140px] bg-slate-900/50 border-white/10 font-mono text-sm text-white"
+                              value={offerings.find(o => o.id === editingOffering)?.templates.outreach || ''}
+                              onChange={(e) => {
+                                const offering = offerings.find(o => o.id === editingOffering);
+                                if (offering) {
+                                  setOfferings(offerings.map(o => 
+                                    o.id === offering.id ? { 
+                                      ...o, 
+                                      templates: { ...o.templates, outreach: e.target.value }
+                                    } : o
+                                  ));
+                                }
+                              }}
+                            />
+                            <div className="flex items-center gap-2 mt-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-2 border-white/10 hover:bg-white/5 text-gray-300"
+                                onClick={() => {
+                                  const link = window.prompt('Enter link to insert:');
+                                  if (link) {
+                                    const offering = offerings.find(o => o.id === editingOffering);
+                                    if (offering) {
+                                      const currentValue = offering.templates.outreach || '';
+                                      setOfferings(offerings.map(o => 
+                                        o.id === offering.id ? { 
+                                          ...o, 
+                                          templates: { ...o.templates, outreach: currentValue + ` ${link}` }
+                                        } : o
+                                      ));
+                                    }
+                                  }
+                                }}
+                              >
+                                <Link2 className="w-4 h-4" />
+                                Insert Link
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Follow-up Template */}
+                          {outreachMethod === 'ai' && (
+                            <div className="bg-slate-800/50 rounded-xl p-5 border border-white/10">
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                                    2
+                                  </div>
+                                  <Label className="text-base font-semibold text-white">Follow-up Template</Label>
+                                </div>
+                              </div>
+                              <div className="mb-4 space-y-2">
+                                <Label className="text-sm text-gray-300">Follow-up Strategy</Label>
+                                <div className="flex gap-4">
+                                  <div className="flex items-center space-x-2">
+                                    <input
+                                      type="radio"
+                                      id="same-followup"
+                                      name="followup-strategy"
+                                      checked={followupStrategy[editingOffering.toString()] !== 'custom'}
+                                      onChange={() => setFollowupStrategy({ ...followupStrategy, [editingOffering.toString()]: 'same' })}
+                                      className="w-4 h-4 text-cyan-500"
+                                    />
+                                    <label htmlFor="same-followup" className="text-sm text-gray-300">Same template for all follow-ups</label>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <input
+                                      type="radio"
+                                      id="custom-followup"
+                                      name="followup-strategy"
+                                      checked={followupStrategy[editingOffering.toString()] === 'custom'}
+                                      onChange={() => setFollowupStrategy({ ...followupStrategy, [editingOffering.toString()]: 'custom' })}
+                                      className="w-4 h-4 text-cyan-500"
+                                    />
+                                    <label htmlFor="custom-followup" className="text-sm text-gray-300">Customize each follow-up</label>
+                                  </div>
+                                </div>
+                              </div>
+                              {followupStrategy[editingOffering.toString()] === 'custom' ? (
+                                <div className="space-y-3">
+                                  {Array.from({ length: parseInt(followUpCount === 'custom' ? customFollowUpCount : followUpCount || '1') }).map((_, idx) => (
+                                    <div key={idx} className="bg-slate-900/50 rounded-lg p-3 border border-white/10">
+                                      <Label className="text-sm font-medium mb-2 block text-gray-300">Follow-up {idx + 1}</Label>
+                                      <Textarea
+                                        placeholder={`Follow-up ${idx + 1} message...`}
+                                        className="min-h-[100px] bg-slate-800/50 border-white/10 text-white"
+                                        value={outreachTemplates[`${editingOffering}-followup-${idx + 1}`] || ''}
+                                        onChange={(e) => {
+                                          setOutreachTemplates({
+                                            ...outreachTemplates,
+                                            [`${editingOffering}-followup-${idx + 1}`]: e.target.value
+                                          });
+                                        }}
+                                      />
+                        </div>
+                      ))}
+                    </div>
+                              ) : (
+                                <Textarea
+                                  placeholder="Follow-up message template..."
+                                  className="min-h-[140px] bg-slate-900/50 border-white/10 font-mono text-sm text-white"
+                                  value={offerings.find(o => o.id === editingOffering)?.templates.followup || ''}
+                                  onChange={(e) => {
+                                    const offering = offerings.find(o => o.id === editingOffering);
+                                    if (offering) {
+                                      setOfferings(offerings.map(o => 
+                                        o.id === offering.id ? { 
+                                          ...o, 
+                                          templates: { ...o.templates, followup: e.target.value }
+                                        } : o
+                                      ));
+                                    }
+                                  }}
+                                />
+                              )}
+                  </div>
+                          )}
+
+                          {/* Closing Template */}
+                          <div className="bg-slate-800/50 rounded-xl p-5 border border-white/10">
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-white font-bold text-sm">
+                                3
+                              </div>
+                              <Label className="text-base font-semibold text-white">Closing Template</Label>
+                            </div>
+                            <Textarea
+                              placeholder="Closing message template..."
+                              className="min-h-[140px] bg-slate-900/50 border-white/10 font-mono text-sm text-white"
+                              value={offerings.find(o => o.id === editingOffering)?.templates.closing || ''}
+                              onChange={(e) => {
+                                const offering = offerings.find(o => o.id === editingOffering);
+                                if (offering) {
+                                  setOfferings(offerings.map(o => 
+                                    o.id === offering.id ? { 
+                                      ...o, 
+                                      templates: { ...o.templates, closing: e.target.value }
+                                    } : o
+                                  ));
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 justify-end pt-4 border-t border-white/10">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setOutreachStep(1)}
+                            className="bg-white/5 border-white/10 text-white"
+                          >
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back
+                          </Button>
+                          <Button 
+                            onClick={() => {
+                              console.log('Saving outreach configuration:', {
+                                offering: editingOffering,
+                                method: outreachMethod,
+                                channels: outreachChannels,
+                                followUpCount: followUpCount === 'custom' ? customFollowUpCount : followUpCount,
+                                followUpFrequency: followUpFrequency === 'custom' ? customFrequency : followUpFrequency,
+                                timeOfFollowUp,
+                                templates: offerings.find(o => o.id === editingOffering)?.templates
+                              });
+                              setEditingOffering(null);
+                              setOutreachStep(0);
+                              setOutreachOffering('');
+                              setOutreachMethod(null);
+                              setOutreachChannels([]);
+                              setFollowUpCount('');
+                              setFollowUpFrequency('');
+                              setTimeOfFollowUp('');
+                              setCustomFollowUpCount('');
+                              setCustomFrequency('');
+                              setOutreachTemplates({});
+                              setFollowupStrategy({});
+                              setOutreachAIPrompt('');
+                            }}
+                            className="bg-gradient-to-r from-cyan-500 to-blue-600"
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-2" />
+                            Complete Setup
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </DialogContent>
+                </Dialog>
+            </motion.div>
             </AnimatePresence>
           </TabsContent>
 
           {/* Notifications Tab */}
           <TabsContent value="notifications" className="space-y-6">
             <AnimatePresence mode="wait">
-              <motion.div
+            <motion.div
                 key="notifications-tab"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
-                className="space-y-6"
-              >
+              className="space-y-6"
+            >
                 <Card className="border-white/10 bg-slate-900/50 backdrop-blur-xl shadow-2xl overflow-hidden">
                   <CardHeader className="border-b border-white/10 bg-gradient-to-r from-cyan-500/10 to-blue-600/10">
                     <CardTitle className="flex items-center gap-2 text-white">
                       <Bell className="w-5 h-5" />
-                      Notification Preferences
-                    </CardTitle>
+                    Notification Preferences
+                  </CardTitle>
                     <CardDescription className="text-gray-400">Manage how you receive updates and alerts</CardDescription>
-                  </CardHeader>
+                </CardHeader>
                   <CardContent className="p-6 space-y-4">
                     {[
                       { title: 'Email Notifications', desc: 'Receive email updates about your campaigns', checked: true },
@@ -969,9 +1596,9 @@ export default function SettingsPage() {
                         <div className="flex-1">
                           <h4 className="font-semibold text-white mb-1">{item.title}</h4>
                           <p className="text-sm text-gray-400">{item.desc}</p>
-                        </div>
+                      </div>
                         <motion.div whileTap={{ scale: 0.95 }}>
-                          <Checkbox 
+                      <Checkbox 
                             defaultChecked={item.checked}
                             className="data-[state=checked]:bg-cyan-500 border-white/20 w-6 h-6"
                           />
@@ -1069,7 +1696,7 @@ export default function SettingsPage() {
                           {session.current && (
                             <Badge className="mt-1 bg-green-500/20 text-green-400 text-xs">Current Session</Badge>
                           )}
-                        </div>
+                      </div>
                         {!session.current && (
                           <Button size="sm" variant="outline" className="bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20">
                             Revoke
@@ -1122,10 +1749,10 @@ export default function SettingsPage() {
                         <Button variant="outline" className="flex-1 bg-white/5 border-white/10 text-white hover:bg-white/10">
                           Cancel Subscription
                         </Button>
-                      </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </CardContent>
+              </Card>
 
                 <Card className="border-white/10 bg-slate-900/50 backdrop-blur-xl shadow-2xl overflow-hidden">
                   <CardHeader className="border-b border-white/10 bg-gradient-to-r from-cyan-500/10 to-blue-600/10">
@@ -1188,7 +1815,7 @@ export default function SettingsPage() {
                               Download
                             </Button>
                           </div>
-                        </motion.div>
+            </motion.div>
                       ))}
                     </div>
                   </CardContent>
@@ -1414,6 +2041,9 @@ export default function SettingsPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* AI Chat Assistant */}
+      <ChatAssistant />
     </div>
   );
 }

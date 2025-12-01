@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ChatAssistant from '@/components/chat-assistant';
 import {
   ArrowLeft,
   Plus,
@@ -272,7 +273,6 @@ export default function CampaignsPage() {
               Create Campaign
             </Button>
           </div>
-
           {/* Tabs */}
           <div className="mt-4 flex gap-2">
             {['all', 'active', 'scheduled', 'draft', 'completed'].map((tab) => (
@@ -294,7 +294,6 @@ export default function CampaignsPage() {
           </div>
         </div>
       </motion.div>
-
       <div className="container mx-auto px-6 py-6">
         <div className="grid grid-cols-1 gap-6">
           {filteredCampaigns.map((campaign, index) => (
@@ -1010,6 +1009,9 @@ export default function CampaignsPage() {
           </Tabs>
         </DialogContent>
       </Dialog>
+
+      {/* AI Chat Assistant */}
+      <ChatAssistant />
     </div>
   );
 }

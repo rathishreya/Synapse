@@ -877,7 +877,7 @@ export default function OnboardingPage() {
               </motion.div>
             </motion.div>
           )}
-
+          
           {/* Step 1: Lead Generation */}
           {currentStep === 'lead-gen' && (
             <motion.div

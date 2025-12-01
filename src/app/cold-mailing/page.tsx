@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import ChatAssistant from '@/components/chat-assistant';
 
 export default function ColdMailingPage() {
   const [selectedTab, setSelectedTab] = useState('inbox');
@@ -215,6 +216,9 @@ export default function ColdMailingPage() {
           </div>
         </div>
       </div>
+
+      {/* AI Chat Assistant */}
+      <ChatAssistant />
     </div>
   );
 }

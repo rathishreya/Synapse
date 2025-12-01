@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import ChatAssistant from '@/components/chat-assistant';
 import {
   ArrowLeft,
   Calendar,
@@ -767,6 +768,9 @@ export default function MeetingsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* AI Chat Assistant */}
+      <ChatAssistant />
     </div>
   );
 }

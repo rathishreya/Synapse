@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
+import ChatAssistant from '@/components/chat-assistant';
 import {
   ArrowLeft,
   Phone,
@@ -650,6 +651,9 @@ export default function ColdCallingPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* AI Chat Assistant */}
+      <ChatAssistant />
     </div>
   );
 }

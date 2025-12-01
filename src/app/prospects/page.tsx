@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
+import ChatAssistant from '@/components/chat-assistant';
 import {
   ArrowLeft,
   Search,
@@ -2885,6 +2886,9 @@ If not interested → Thank and end call`);
           )}
         </DialogContent>
       </Dialog>
+
+      {/* AI Chat Assistant */}
+      <ChatAssistant />
     </div>
   );
 }
