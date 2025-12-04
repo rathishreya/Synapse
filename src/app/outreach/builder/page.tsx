@@ -604,7 +604,9 @@ export default function SequenceBuilderPage() {
     if (tree.children) {
       return {
         ...tree,
-        children: tree.children.map(child => updateNodeInTree(child, nodeId, updates))
+        children: tree.children
+          .map(child => updateNodeInTree(child, nodeId, updates))
+          .filter(child => child !== null) as SequenceNode[]
       };
     }
     return tree;
