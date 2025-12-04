@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -639,7 +640,7 @@ export default function SequenceBuilderPage() {
     if (tree.children) {
       return {
         ...tree,
-        children: tree.children.map(child => insertNodeAfter(child, afterId, newNode))
+        children: tree.children.map(child => insertNodeAfter(child, afterId, newNode)).filter((child): child is SequenceNode => child !== null)
       };
     }
     return tree;
@@ -854,7 +855,7 @@ export default function SequenceBuilderPage() {
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
-  const renderNode = (node: SequenceNode, depth: number = 0): JSX.Element => {
+  const renderNode = (node: SequenceNode, depth: number = 0): React.JSX.Element => {
     const Icon = getActionIcon(node.type);
     const isDelay = node.type === 'delay';
     const isCondition = node.type === 'condition';
