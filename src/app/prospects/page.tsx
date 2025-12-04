@@ -1,5 +1,4 @@
 'use client';
-
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -57,6 +56,7 @@ import {
   XCircle
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 // Type definitions for type safety
@@ -67,6 +67,7 @@ interface Offering {
 }
 
 export default function ProspectsPage() {
+  const router = useRouter();
   const [selectedOffering, setSelectedOffering] = useState('enterprise');
   const [selectedProspects, setSelectedProspects] = useState<number[]>([]);
   const [showBulkAssign, setShowBulkAssign] = useState(false);
@@ -109,7 +110,7 @@ export default function ProspectsPage() {
   
   // Start Outreach states
   const [showStartOutreach, setShowStartOutreach] = useState(false);
-  const [outreachStep, setOutreachStep] = useState<0 | 0.5 | 1 | 2>(0);
+  const [outreachStep, setOutreachStep] = useState<0 | 0.5 | 1 | 2 | 3>(0);
   const [outreachOffering, setOutreachOffering] = useState('');
   const [outreachGroup, setOutreachGroup] = useState('');
   const [showCreateGroupInOutreach, setShowCreateGroupInOutreach] = useState(false);
@@ -133,11 +134,23 @@ export default function ProspectsPage() {
   const [outreachCurrentOfferingIndex, setOutreachCurrentOfferingIndex] = useState(0);
   const [followupStrategy, setFollowupStrategy] = useState<Record<string, 'same' | 'custom'>>({});
   const [outreachAIPrompt, setOutreachAIPrompt] = useState('');
+  const [outreachLaunchMode, setOutreachLaunchMode] = useState<'immediate' | 'custom' | null>(null);
+  const [outreachLaunchDate, setOutreachLaunchDate] = useState('');
+  const [outreachLaunchTime, setOutreachLaunchTime] = useState('');
   
   // Create Group states
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [groupName, setGroupName] = useState('');
   const [groupDescription, setGroupDescription] = useState('');
+  
+  // Workflow Builder states
+  const [showWorkflowBuilder, setShowWorkflowBuilder] = useState(false);
+  const [workflowStep, setWorkflowStep] = useState<0 | 1 | 2>(0); // 0: template or scratch, 1: sequence builder, 2: launch campaign
+  const [selectedWorkflowGroup, setSelectedWorkflowGroup] = useState<string | null>(null);
+  const [workflowStartMode, setWorkflowStartMode] = useState<'template' | 'scratch' | null>(null);
+  const [campaignLaunchMode, setCampaignLaunchMode] = useState<'immediate' | 'custom' | null>(null);
+  const [campaignLaunchDate, setCampaignLaunchDate] = useState('');
+  const [campaignLaunchTime, setCampaignLaunchTime] = useState('');
   
   // Prospect detail dialog states
   const [showProspectDetail, setShowProspectDetail] = useState(false);
@@ -1390,6 +1403,9 @@ If not interested → Thank and end call`);
           setOutreachCurrentOfferingIndex(0);
           setFollowupStrategy({});
           setOutreachAIPrompt('');
+          setOutreachLaunchMode(null);
+          setOutreachLaunchDate('');
+          setOutreachLaunchTime('');
         }
       }}>
         <DialogContent className="bg-slate-900 border-white/10 max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -1398,11 +1414,11 @@ If not interested → Thank and end call`);
               <Zap className="w-5 h-5 text-cyan-400" />
               Start Outreach Campaign
               <Badge variant="secondary" className="ml-auto">
-                {outreachStep === 0 ? 'Step 1 of 4' : outreachStep === 0.5 ? 'Step 2 of 4' : outreachStep === 1 ? 'Step 3 of 4' : 'Step 4 of 4'}
+                {outreachStep === 0 ? 'Step 1 of 5' : outreachStep === 0.5 ? 'Step 2 of 5' : outreachStep === 1 ? 'Step 3 of 5' : outreachStep === 2 ? 'Step 4 of 5' : 'Step 5 of 5'}
               </Badge>
             </DialogTitle>
             <DialogDescription className="text-gray-400">
-              {outreachStep === 0 ? 'Select an offering' : outreachStep === 0.5 ? 'Select or create a group' : outreachStep === 1 ? 'Configure your outreach strategy' : 'Set up message templates'}
+              {outreachStep === 0 ? 'Select an offering' : outreachStep === 0.5 ? 'Select or create a group' : outreachStep === 1 ? 'Configure your outreach strategy' : outreachStep === 2 ? 'Set up message templates' : 'Schedule your campaign launch'}
             </DialogDescription>
           </DialogHeader>
 
@@ -1991,45 +2007,205 @@ If not interested → Thank and end call`);
                   Back
                 </Button>
                 <Button 
-                  onClick={() => {
-                    console.log('Outreach Configuration:', {
-                      offering: outreachOffering,
-                      method: outreachMethod,
-                      channels: outreachChannels,
-                      followUpCount: followUpCount === 'custom' ? customFollowUpCount : followUpCount,
-                      followUpFrequency: followUpFrequency === 'custom' ? customFrequency : followUpFrequency,
-                      timeOfFollowUp,
-                      startTime,
-                      templates: outreachTemplates
-                    });
-                    setShowStartOutreach(false);
-                    // Reset states
-                    setOutreachStep(1);
-                    setOutreachOffering('');
-                    setOutreachMethod(null);
-                    setOutreachChannels([]);
-                    setFollowUpCount('');
-                    setFollowUpFrequency('');
-                    setTimeOfFollowUp('');
-                    setStartTime('');
-                    setCustomDate('');
-                    setCustomTime('');
-                    setTestFrom('');
-                    setTestTo('');
-                    setTestSubject('');
-                    setTestBody('');
-                    setCustomFollowUpCount('');
-                    setCustomFrequency('');
-                    setOutreachTemplates({});
-                    setOutreachCurrentOfferingIndex(0);
-                    setFollowupStrategy({});
-                    setOutreachAIPrompt('');
-                  }}
+                  onClick={() => setOutreachStep(3)}
                   className="bg-gradient-to-r from-cyan-500 to-blue-600"
                 >
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Complete Setup
+                  Continue <ChevronRight className="w-4 h-4 ml-2" />
                 </Button>
+              </div>
+            </div>
+          )}
+
+          {outreachStep === 3 && (
+            <div className="space-y-6 py-4">
+              {/* Step 3: Launch Campaign Scheduling */}
+              <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4 mb-4">
+                <div className="flex items-start gap-3">
+                  <Target className="w-5 h-5 text-cyan-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-cyan-400 mb-1">Ready to Launch</p>
+                    <p className="text-xs text-gray-400">
+                      Offering: {offerings.find(o => o.id === outreachOffering)?.name} | Group: {groups.find(g => g.id === outreachGroup)?.name} | Method: {outreachMethod === 'ai' ? 'AI Automated' : 'Manual'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-gray-300 mb-4 block">When should this campaign start? *</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Card 
+                      className={`cursor-pointer transition-all border-2 ${
+                        outreachLaunchMode === 'immediate' 
+                          ? 'border-cyan-500 shadow-lg shadow-cyan-500/20 bg-cyan-500/5' 
+                          : 'border-white/10 hover:border-cyan-500/50 bg-slate-800/50'
+                      }`}
+                      onClick={() => setOutreachLaunchMode('immediate')}
+                    >
+                      <CardHeader className="text-center pb-6">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 mx-auto mb-4">
+                          <Zap className="w-8 h-8 text-white" />
+                        </div>
+                        <CardTitle className="text-lg mb-2 text-white">Start Immediately</CardTitle>
+                        <p className="text-sm text-gray-400">Launch the campaign right away and begin outreach</p>
+                      </CardHeader>
+                    </Card>
+                  </motion.div>
+
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Card 
+                      className={`cursor-pointer transition-all border-2 ${
+                        outreachLaunchMode === 'custom' 
+                          ? 'border-cyan-500 shadow-lg shadow-cyan-500/20 bg-cyan-500/5' 
+                          : 'border-white/10 hover:border-cyan-500/50 bg-slate-800/50'
+                      }`}
+                      onClick={() => setOutreachLaunchMode('custom')}
+                    >
+                      <CardHeader className="text-center pb-6">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 mx-auto mb-4">
+                          <Calendar className="w-8 h-8 text-white" />
+                        </div>
+                        <CardTitle className="text-lg mb-2 text-white">Custom Schedule</CardTitle>
+                        <p className="text-sm text-gray-400">Choose a specific date and time to start the campaign</p>
+                      </CardHeader>
+                    </Card>
+                  </motion.div>
+                </div>
+              </div>
+
+              {outreachLaunchMode === 'custom' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="space-y-4"
+                >
+                  <Separator className="bg-white/10" />
+                  
+                  <div className="bg-slate-800/50 rounded-xl p-4 border border-white/10">
+                    <Label className="text-gray-300 mb-3 block">Schedule Details</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-gray-400 text-sm mb-2 block">Launch Date *</Label>
+                        <Input
+                          type="date"
+                          value={outreachLaunchDate}
+                          onChange={(e) => setOutreachLaunchDate(e.target.value)}
+                          className="bg-slate-900/50 border-white/10 text-white"
+                          min={new Date().toISOString().split('T')[0]}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-gray-400 text-sm mb-2 block">Launch Time *</Label>
+                        <Input
+                          type="time"
+                          value={outreachLaunchTime}
+                          onChange={(e) => setOutreachLaunchTime(e.target.value)}
+                          className="bg-slate-900/50 border-white/10 text-white"
+                        />
+                      </div>
+                    </div>
+                    {outreachLaunchDate && outreachLaunchTime && (
+                      <div className="mt-4 p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+                        <p className="text-sm text-cyan-400 flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          Campaign will launch on {new Date(outreachLaunchDate + 'T' + outreachLaunchTime).toLocaleString('en-US', { 
+                            dateStyle: 'full', 
+                            timeStyle: 'short' 
+                          })}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+
+              <div className="flex gap-2 justify-end pt-4 border-t border-white/10">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setOutreachStep(2)}
+                  className="bg-white/5 border-white/10 text-white"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+                {outreachLaunchMode && (
+                  outreachLaunchMode === 'immediate' || 
+                  (outreachLaunchMode === 'custom' && outreachLaunchDate && outreachLaunchTime)
+                ) && (
+                  <Button 
+                    onClick={() => {
+                      // Handle campaign launch based on mode
+                      const selectedGroup = groups.find(g => g.id === outreachGroup);
+                      
+                      if (outreachLaunchMode === 'immediate') {
+                        // Launch immediately
+                        console.log('Launching outreach campaign immediately:', {
+                          offering: outreachOffering,
+                          group: selectedGroup?.name,
+                          prospects: selectedGroup?.prospectIds.length,
+                          method: outreachMethod,
+                          channels: outreachChannels,
+                          followUpCount: followUpCount === 'custom' ? customFollowUpCount : followUpCount,
+                          followUpFrequency: followUpFrequency === 'custom' ? customFrequency : followUpFrequency,
+                          timeOfFollowUp,
+                          startTime,
+                          templates: outreachTemplates,
+                          launchTime: new Date().toISOString()
+                        });
+                        alert(`✅ Campaign launched successfully!\n\nOffering: ${offerings.find(o => o.id === outreachOffering)?.name}\nGroup: ${selectedGroup?.name}\nProspects: ${selectedGroup?.prospectIds.length}\nMethod: ${outreachMethod === 'ai' ? 'AI Automated' : 'Manual'}\nStatus: Active (Started Immediately)`);
+                      } else if (outreachLaunchMode === 'custom') {
+                        // Schedule for later
+                        const scheduledDateTime = new Date(outreachLaunchDate + 'T' + outreachLaunchTime);
+                        console.log('Scheduling outreach campaign for:', {
+                          offering: outreachOffering,
+                          group: selectedGroup?.name,
+                          prospects: selectedGroup?.prospectIds.length,
+                          method: outreachMethod,
+                          channels: outreachChannels,
+                          followUpCount: followUpCount === 'custom' ? customFollowUpCount : followUpCount,
+                          followUpFrequency: followUpFrequency === 'custom' ? customFrequency : followUpFrequency,
+                          timeOfFollowUp,
+                          startTime,
+                          templates: outreachTemplates,
+                          scheduledTime: scheduledDateTime.toISOString()
+                        });
+                        alert(`✅ Campaign scheduled successfully!\n\nOffering: ${offerings.find(o => o.id === outreachOffering)?.name}\nGroup: ${selectedGroup?.name}\nProspects: ${selectedGroup?.prospectIds.length}\nMethod: ${outreachMethod === 'ai' ? 'AI Automated' : 'Manual'}\nScheduled for: ${scheduledDateTime.toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })}`);
+                      }
+                      
+                      // Reset and close
+                      setShowStartOutreach(false);
+                      setOutreachStep(0);
+                      setOutreachOffering('');
+                      setOutreachGroup('');
+                      setOutreachMethod(null);
+                      setOutreachChannels([]);
+                      setFollowUpCount('');
+                      setFollowUpFrequency('');
+                      setTimeOfFollowUp('');
+                      setStartTime('');
+                      setCustomDate('');
+                      setCustomTime('');
+                      setTestFrom('');
+                      setTestTo('');
+                      setTestSubject('');
+                      setTestBody('');
+                      setCustomFollowUpCount('');
+                      setCustomFrequency('');
+                      setOutreachTemplates({});
+                      setOutreachCurrentOfferingIndex(0);
+                      setFollowupStrategy({});
+                      setOutreachAIPrompt('');
+                      setOutreachLaunchMode(null);
+                      setOutreachLaunchDate('');
+                      setOutreachLaunchTime('');
+                    }}
+                    className="bg-gradient-to-r from-green-500 to-emerald-600"
+                  >
+                    <PlayCircle className="w-4 h-4 mr-2" />
+                    {outreachLaunchMode === 'immediate' ? 'Launch Now' : 'Schedule Campaign'}
+                  </Button>
+                )}
               </div>
             </div>
           )}
@@ -2194,6 +2370,22 @@ If not interested → Thank and end call`);
                               Prospects: <span className="text-cyan-400">{group.prospectIds.length}</span>
                             </span>
                           </div>
+                          {selectedGroupFilter === group.id && (
+                            <div className="mt-3 pt-3 border-t border-white/10">
+                              <Button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedWorkflowGroup(group.id);
+                                  setShowWorkflowBuilder(true);
+                                  setWorkflowStep(0);
+                                }}
+                                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white"
+                              >
+                                <Zap className="w-4 h-4 mr-2" />
+                                Start Workflow
+                              </Button>
+                            </div>
+                          )}
                         </div>
                         {selectedGroupFilter === group.id && (
                           <XCircle 
@@ -2211,6 +2403,314 @@ If not interested → Thank and end call`);
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Workflow Builder Dialog */}
+      <Dialog open={showWorkflowBuilder} onOpenChange={setShowWorkflowBuilder}>
+        <DialogContent className="bg-slate-900 border-white/10 max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Zap className="w-5 h-5 text-cyan-400" />
+              Workflow Builder
+              <Badge variant="outline" className="ml-auto bg-cyan-500/10 text-cyan-400 border-cyan-500/30">
+                {workflowStep === 0 ? 'Step 1 of 3' : workflowStep === 1 ? 'Step 2 of 3' : 'Step 3 of 3'}
+              </Badge>
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              {workflowStep === 0 ? 'Choose how you want to start your workflow sequence' : workflowStep === 1 ? 'Build your workflow sequence' : 'Schedule your campaign launch'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {workflowStep === 0 && (
+            <div className="space-y-6 py-4">
+              {/* Step 0: Template or Scratch Selection */}
+              <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4 mb-4">
+                <div className="flex items-start gap-3">
+                  <Target className="w-5 h-5 text-cyan-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-cyan-400 mb-1">Selected Group</p>
+                    <p className="text-xs text-gray-400">
+                      {selectedWorkflowGroup && groups.find(g => g.id === selectedWorkflowGroup)?.name} 
+                      {' '}({selectedWorkflowGroup && groups.find(g => g.id === selectedWorkflowGroup)?.prospectIds.length} prospects)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-gray-300 mb-4 block">Start Workflow With *</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Card 
+                      className={`cursor-pointer transition-all border-2 ${
+                        workflowStartMode === 'template' 
+                          ? 'border-cyan-500 shadow-lg shadow-cyan-500/20 bg-cyan-500/5' 
+                          : 'border-white/10 hover:border-cyan-500/50 bg-slate-800/50'
+                      }`}
+                      onClick={() => setWorkflowStartMode('template')}
+                    >
+                      <CardHeader className="text-center pb-6">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 mx-auto mb-4">
+                          <FileText className="w-8 h-8 text-white" />
+                        </div>
+                        <CardTitle className="text-lg mb-2 text-white">Start with Template</CardTitle>
+                        <p className="text-sm text-gray-400">Choose from pre-built workflow templates to get started quickly</p>
+                      </CardHeader>
+                    </Card>
+                  </motion.div>
+
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Card 
+                      className={`cursor-pointer transition-all border-2 ${
+                        workflowStartMode === 'scratch' 
+                          ? 'border-cyan-500 shadow-lg shadow-cyan-500/20 bg-cyan-500/5' 
+                          : 'border-white/10 hover:border-cyan-500/50 bg-slate-800/50'
+                      }`}
+                      onClick={() => setWorkflowStartMode('scratch')}
+                    >
+                      <CardHeader className="text-center pb-6">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 mx-auto mb-4">
+                          <Sparkles className="w-8 h-8 text-white" />
+                        </div>
+                        <CardTitle className="text-lg mb-2 text-white">Start from Scratch</CardTitle>
+                        <p className="text-sm text-gray-400">Build a custom workflow from the ground up with full control</p>
+                      </CardHeader>
+                    </Card>
+                  </motion.div>
+                </div>
+              </div>
+
+              <div className="flex gap-2 justify-end pt-4 border-t border-white/10">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowWorkflowBuilder(false);
+                    setWorkflowStartMode(null);
+                  }}
+                  className="bg-white/5 border-white/10 text-white"
+                >
+                  Cancel
+                </Button>
+                {workflowStartMode && (
+                  <Button 
+                    onClick={() => setWorkflowStep(1)}
+                    className="bg-gradient-to-r from-cyan-500 to-blue-600"
+                  >
+                    Continue <ChevronRight className="w-4 h-4 ml-2" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {workflowStep === 1 && (
+            <div className="space-y-6 py-4">
+              {/* Step 1: Sequence Builder (Placeholder) */}
+              <div className="bg-slate-800/50 rounded-lg p-6 border border-white/10">
+                <div className="text-center py-8">
+                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 mx-auto mb-4">
+                    {workflowStartMode === 'template' ? (
+                      <FileText className="w-10 h-10 text-white" />
+                    ) : (
+                      <Sparkles className="w-10 h-10 text-white" />
+                    )}
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">
+                    {workflowStartMode === 'template' ? 'Template Selection' : 'Sequence Builder'}
+                  </h3>
+                  <p className="text-gray-400 mb-4">
+                    {workflowStartMode === 'template' 
+                      ? 'Choose from available workflow templates and customize them for your needs'
+                      : 'Build your custom workflow sequence step by step'}
+                  </p>
+                  <Badge className="bg-gradient-to-r from-cyan-500/20 to-blue-600/20 text-cyan-400 border border-cyan-500/30 px-4 py-2">
+                    Coming Soon
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="flex gap-2 justify-end pt-4 border-t border-white/10">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setWorkflowStep(0)}
+                  className="bg-white/5 border-white/10 text-white"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+                <Button 
+                  onClick={() => setWorkflowStep(2)}
+                  className="bg-gradient-to-r from-cyan-500 to-blue-600"
+                >
+                  Continue <ChevronRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {workflowStep === 2 && (
+            <div className="space-y-6 py-4">
+              {/* Step 2: Launch Campaign Scheduling */}
+              <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4 mb-4">
+                <div className="flex items-start gap-3">
+                  <Target className="w-5 h-5 text-cyan-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-cyan-400 mb-1">Ready to Launch</p>
+                    <p className="text-xs text-gray-400">
+                      {selectedWorkflowGroup && groups.find(g => g.id === selectedWorkflowGroup)?.name} 
+                      {' '}• {workflowStartMode === 'template' ? 'Template-based' : 'Custom'} Workflow
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-gray-300 mb-4 block">When should this campaign start? *</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Card 
+                      className={`cursor-pointer transition-all border-2 ${
+                        campaignLaunchMode === 'immediate' 
+                          ? 'border-cyan-500 shadow-lg shadow-cyan-500/20 bg-cyan-500/5' 
+                          : 'border-white/10 hover:border-cyan-500/50 bg-slate-800/50'
+                      }`}
+                      onClick={() => setCampaignLaunchMode('immediate')}
+                    >
+                      <CardHeader className="text-center pb-6">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 mx-auto mb-4">
+                          <Zap className="w-8 h-8 text-white" />
+                        </div>
+                        <CardTitle className="text-lg mb-2 text-white">Start Immediately</CardTitle>
+                        <p className="text-sm text-gray-400">Launch the campaign right away and begin outreach</p>
+                      </CardHeader>
+                    </Card>
+                  </motion.div>
+
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Card 
+                      className={`cursor-pointer transition-all border-2 ${
+                        campaignLaunchMode === 'custom' 
+                          ? 'border-cyan-500 shadow-lg shadow-cyan-500/20 bg-cyan-500/5' 
+                          : 'border-white/10 hover:border-cyan-500/50 bg-slate-800/50'
+                      }`}
+                      onClick={() => setCampaignLaunchMode('custom')}
+                    >
+                      <CardHeader className="text-center pb-6">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 mx-auto mb-4">
+                          <Calendar className="w-8 h-8 text-white" />
+                        </div>
+                        <CardTitle className="text-lg mb-2 text-white">Custom Schedule</CardTitle>
+                        <p className="text-sm text-gray-400">Choose a specific date and time to start the campaign</p>
+                      </CardHeader>
+                    </Card>
+                  </motion.div>
+                </div>
+              </div>
+
+              {campaignLaunchMode === 'custom' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="space-y-4"
+                >
+                  <Separator className="bg-white/10" />
+                  
+                  <div className="bg-slate-800/50 rounded-xl p-4 border border-white/10">
+                    <Label className="text-gray-300 mb-3 block">Schedule Details</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-gray-400 text-sm mb-2 block">Launch Date *</Label>
+                        <Input
+                          type="date"
+                          value={campaignLaunchDate}
+                          onChange={(e) => setCampaignLaunchDate(e.target.value)}
+                          className="bg-slate-900/50 border-white/10 text-white"
+                          min={new Date().toISOString().split('T')[0]}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-gray-400 text-sm mb-2 block">Launch Time *</Label>
+                        <Input
+                          type="time"
+                          value={campaignLaunchTime}
+                          onChange={(e) => setCampaignLaunchTime(e.target.value)}
+                          className="bg-slate-900/50 border-white/10 text-white"
+                        />
+                      </div>
+                    </div>
+                    {campaignLaunchDate && campaignLaunchTime && (
+                      <div className="mt-4 p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+                        <p className="text-sm text-cyan-400 flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          Campaign will launch on {new Date(campaignLaunchDate + 'T' + campaignLaunchTime).toLocaleString('en-US', { 
+                            dateStyle: 'full', 
+                            timeStyle: 'short' 
+                          })}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+
+              <div className="flex gap-2 justify-end pt-4 border-t border-white/10">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setWorkflowStep(1)}
+                  className="bg-white/5 border-white/10 text-white"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+                {campaignLaunchMode && (
+                  campaignLaunchMode === 'immediate' || 
+                  (campaignLaunchMode === 'custom' && campaignLaunchDate && campaignLaunchTime)
+                ) && (
+                  <Button 
+                    onClick={() => {
+                      // Handle campaign launch based on mode
+                      const selectedGroup = groups.find(g => g.id === selectedWorkflowGroup);
+                      
+                      if (campaignLaunchMode === 'immediate') {
+                        // Launch immediately
+                        console.log('Launching campaign immediately:', {
+                          group: selectedGroup?.name,
+                          prospects: selectedGroup?.prospectIds.length,
+                          workflowType: workflowStartMode,
+                          launchTime: new Date().toISOString()
+                        });
+                        alert(`✅ Campaign launched successfully!\n\nGroup: ${selectedGroup?.name}\nProspects: ${selectedGroup?.prospectIds.length}\nStatus: Active (Started Immediately)`);
+                      } else if (campaignLaunchMode === 'custom') {
+                        // Schedule for later
+                        const scheduledDateTime = new Date(campaignLaunchDate + 'T' + campaignLaunchTime);
+                        console.log('Scheduling campaign for:', {
+                          group: selectedGroup?.name,
+                          prospects: selectedGroup?.prospectIds.length,
+                          workflowType: workflowStartMode,
+                          scheduledTime: scheduledDateTime.toISOString()
+                        });
+                        alert(`✅ Campaign scheduled successfully!\n\nGroup: ${selectedGroup?.name}\nProspects: ${selectedGroup?.prospectIds.length}\nScheduled for: ${scheduledDateTime.toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })}`);
+                      }
+                      
+                      // Reset and close
+                      setShowWorkflowBuilder(false);
+                      setWorkflowStep(0);
+                      setWorkflowStartMode(null);
+                      setSelectedWorkflowGroup(null);
+                      setCampaignLaunchMode(null);
+                      setCampaignLaunchDate('');
+                      setCampaignLaunchTime('');
+                    }}
+                    className="bg-gradient-to-r from-green-500 to-emerald-600"
+                  >
+                    <PlayCircle className="w-4 h-4 mr-2" />
+                    {campaignLaunchMode === 'immediate' ? 'Launch Now' : 'Schedule Campaign'}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -2492,12 +2992,19 @@ If not interested → Thank and end call`);
                           </div>
                         </CardHeader>
                         <CardContent className="p-6">
-                          <div className="grid grid-cols-3 gap-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <Button
+                              onClick={() => router.push('/inbox')}
+                              className="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-purple-500/25 transition-all h-12 text-base font-medium"
+                            >
+                              <Mail className="w-4 h-4 mr-2" />
+                              Inbox
+                            </Button>
                             <Button
                               onClick={() => setDetailTab('email')}
                               className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white shadow-lg hover:shadow-cyan-500/25 transition-all h-12 text-base font-medium"
                             >
-                              <Mail className="w-4 h-4 mr-2" />
+                              <Send className="w-4 h-4 mr-2" />
                               Send Email
                             </Button>
                             <Button

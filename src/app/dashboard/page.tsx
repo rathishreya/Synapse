@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import Link from 'next/link';
 import ChatAssistant from '@/components/chat-assistant';
+import DashboardInbox from '@/components/dashboard-inbox';
 import { 
   TrendingUp,
   TrendingDown, 
@@ -103,14 +104,15 @@ export default function DashboardPage() {
   const quickActions = [
     { icon: Users, label: 'Prospects', color: 'from-indigo-500 to-indigo-600', href: '/prospects' },
     { icon: Target, label: 'Leads', color: 'from-emerald-500 to-emerald-600', href: '/leads' },
-    { icon: Mail, label: 'Cold Mailing', color: 'from-blue-500 to-blue-600', href: '/cold-mailing' },
+    { icon: Zap, label: 'Outreach', color: 'from-cyan-500 to-blue-600', href: '/outreach' },
     { icon: Phone, label: 'Cold Call', color: 'from-green-500 to-green-600', href: '/cold-calling' },
     { icon: Calendar, label: 'Schedule Meeting', color: 'from-purple-500 to-purple-600', href: '/meetings' },
-    { icon: Activity, label: 'Email Campaign', color: 'from-orange-500 to-orange-600', href: '/campaigns' },
     { icon: Linkedin, label: 'LinkedIn', color: 'from-blue-600 to-blue-700', href: '/linkedin' },
-    { icon: Twitter, label: 'Twitter', color: 'from-sky-400 to-sky-500', href: '/twitter' },
-    { icon: Instagram, label: 'Instagram', color: 'from-pink-500 to-purple-600', href: '/instagram' },
-    { icon: Youtube, label: 'YouTube', color: 'from-red-500 to-red-600', href: '/youtube' }
+    // { icon: Mail, label: 'Cold Mailing', color: 'from-blue-500 to-blue-600', href: '/cold-mailing' },
+    // { icon: Activity, label: 'Email Campaign', color: 'from-orange-500 to-orange-600', href: '/campaigns' },
+    // { icon: Twitter, label: 'Twitter', color: 'from-sky-400 to-sky-500', href: '/twitter' },
+    // { icon: Instagram, label: 'Instagram', color: 'from-pink-500 to-purple-600', href: '/instagram' },
+    // { icon: Youtube, label: 'YouTube', color: 'from-red-500 to-red-600', href: '/youtube' }
   ];
 
 
@@ -613,6 +615,16 @@ export default function DashboardPage() {
             </Card>
           </motion.div>
             </div>
+
+        {/* Unified Inbox Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          className="mt-8"
+        >
+          <DashboardInbox />
+        </motion.div>
 
       </div>
 
