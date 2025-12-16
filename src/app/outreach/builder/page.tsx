@@ -41,7 +41,8 @@ import {
   ChevronDown,
   Trash2,
   Edit,
-  Copy
+  Copy,
+  AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -49,23 +50,17 @@ import ChatAssistant from '@/components/chat-assistant';
 
 type ActionType = 
   | 'send_invite' 
-  | 'follow' 
-  | 'endorse_skills' 
-  | 'view_profile' 
-  | 'inmail' 
+  | 'send_invite_with_note'
   | 'message' 
-  | 'like_post'
+  | 'inmail' 
+  | 'follow' 
   | 'send_email'
-  | 'find_email'
   | 'withdraw_invite';
 
 type ConditionType = 
   | 'if_connected'
-  | 'if_not_accepted'
-  | 'if_viewed_message'
-  | 'if_email_available'
-  | 'if_open_profile'
-  | 'if_responded_inmail'
+  | 'if_viewed_inmail'
+  | 'if_responded'
   | 'if_user_acknowledges';
 
 type SequenceNode = {
@@ -82,6 +77,9 @@ type SequenceNode = {
     personalizationVars?: string[];
   };
   children?: SequenceNode[];
+  // For branching conditions
+  trueBranch?: SequenceNode[];
+  falseBranch?: SequenceNode[];
   position: { x: number; y: number };
 };
 
@@ -94,6 +92,9 @@ export default function SequenceBuilderPage() {
   const [showMessageDialog, setShowMessageDialog] = useState(false);
   const [showDelayDialog, setShowDelayDialog] = useState(false);
   const [showConditionDialog, setShowConditionDialog] = useState(false);
+  const [showBranchDialog, setShowBranchDialog] = useState(false);
+  const [selectedBranchNodeId, setSelectedBranchNodeId] = useState<string | null>(null);
+  const [selectedBranchPath, setSelectedBranchPath] = useState<'true' | 'false' | null>(null);
   const [showAddActionMenu, setShowAddActionMenu] = useState(false);
   const [showStartChoice, setShowStartChoice] = useState(false);
   const [showAudienceSelector, setShowAudienceSelector] = useState(true);
@@ -102,10 +103,24 @@ export default function SequenceBuilderPage() {
   const [currentAction, setCurrentAction] = useState<ActionType | null>(null);
   const [insertAfterNodeId, setInsertAfterNodeId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'sequence' | 'audience' | 'statistics' | 'settings'>('sequence');
+  const [outreachType, setOutreachType] = useState<'single' | 'multichannel'>('single');
+  const [singleChannelType, setSingleChannelType] = useState<'email' | 'linkedin'>('email');
   const [showWorkflowDecision, setShowWorkflowDecision] = useState(false);
   const [workflowDecision, setWorkflowDecision] = useState<'build' | 'manual' | 'later' | null>(null);
   const [pendingAcknowledgeNode, setPendingAcknowledgeNode] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Array<{id: string; message: string; type: 'info' | 'success' | 'warning'}>>([]);
+  
+  // Multichannel filtering states
+  const [showMultichannelFilterDialog, setShowMultichannelFilterDialog] = useState(false);
+  const [totalProspects, setTotalProspects] = useState(0);
+  const [completeProspects, setCompleteProspects] = useState(0);
+  const [incompleteProspects, setIncompleteProspects] = useState(0);
+  const [showTemplateChoice, setShowTemplateChoice] = useState(false);
+  const [templateChoice, setTemplateChoice] = useState<'template' | 'custom' | null>(null);
+  
+  // Prospect view states
+  const [showProspectView, setShowProspectView] = useState(false);
+  const [selectedNodeForProspects, setSelectedNodeForProspects] = useState<string | null>(null);
   
   // Groups state
   const [groups, setGroups] = useState<Array<{
@@ -139,7 +154,304 @@ export default function SequenceBuilderPage() {
     { label: 'BLACKLISTED', value: 0, icon: Ban, color: 'from-purple-500 to-purple-600' }
   ];
 
-  const [sequenceTree, setSequenceTree] = useState<SequenceNode | null>(null);
+  // Default templates based on outreach type
+  const getDefaultEmailTemplate = (): SequenceNode => ({
+    id: 'start',
+    type: 'send_email',
+    label: 'Send Email',
+    data: {
+      subject: 'Introducing [Your Product]',
+      message: 'Hi {{firstName}},\n\nI noticed your work at {{company}} and thought our solution could help...',
+      personalizationVars: ['firstName', 'company']
+    },
+    position: { x: 0, y: 0 },
+    children: [{
+      id: 'delay-1',
+      type: 'delay',
+      label: 'Wait 3 Days',
+      data: { delay: 3, delayUnit: 'days' },
+      position: { x: 0, y: 150 },
+      children: [{
+        id: 'followup-1',
+        type: 'send_email',
+        label: 'Follow-up Email',
+        data: {
+          subject: 'Quick follow-up',
+          message: 'Hi {{firstName}},\n\nJust checking if you had a chance to review my previous email...',
+        },
+        position: { x: 0, y: 300 },
+        children: [{
+          id: 'end',
+          type: 'end',
+          label: 'End Campaign',
+          data: {},
+          position: { x: 0, y: 450 }
+        }]
+      }]
+    }]
+  });
+
+  const getDefaultLinkedInTemplate = (): SequenceNode => ({
+    id: 'start',
+    type: 'send_invite',
+    label: 'Send Connection Request',
+    data: {
+      message: 'Hi {{firstName}}, I\'d love to connect and learn more about your work at {{company}}.',
+      personalizationVars: ['firstName', 'company']
+    },
+    position: { x: 0, y: 0 },
+    children: [{
+      id: 'delay-1',
+      type: 'delay',
+      label: 'Wait 2 Days',
+      data: { delay: 2, delayUnit: 'days' },
+      position: { x: 0, y: 150 },
+      children: [{
+        id: 'condition-1',
+        type: 'condition',
+        label: 'If Connected?',
+        data: {
+          conditionType: 'if_connected',
+          conditionLabel: 'Connection Accepted'
+        },
+        position: { x: 0, y: 300 },
+        children: [{
+          id: 'message-1',
+          type: 'message',
+          label: 'Send Message',
+          data: {
+            message: 'Thanks for connecting {{firstName}}! I wanted to share how we help companies like {{company}}...',
+          },
+          position: { x: -200, y: 450 },
+          children: [{
+            id: 'end',
+            type: 'end',
+            label: 'End Campaign',
+            data: {},
+            position: { x: -200, y: 600 }
+          }]
+        }]
+      }]
+    }]
+  });
+
+  const getDefaultMultichannelTemplate = (): SequenceNode => ({
+    id: 'start',
+    type: 'send_invite',
+    label: 'Send LinkedIn Connection',
+    data: {
+      message: 'Hi {{firstName}}, I\'d love to connect!',
+      personalizationVars: ['firstName']
+    },
+    position: { x: 0, y: 0 },
+    children: [{
+      id: 'delay-1',
+      type: 'delay',
+      label: 'Wait 1 Day',
+      data: { delay: 1, delayUnit: 'days' },
+      position: { x: 0, y: 150 },
+      children: [{
+        id: 'email-1',
+        type: 'send_email',
+        label: 'Send Email',
+        data: {
+          subject: 'Following up from LinkedIn',
+          message: 'Hi {{firstName}},\n\nI just sent you a connection request on LinkedIn...',
+        },
+        position: { x: 0, y: 300 },
+        children: [{
+          id: 'delay-2',
+          type: 'delay',
+          label: 'Wait 3 Days',
+          data: { delay: 3, delayUnit: 'days' },
+          position: { x: 0, y: 450 },
+          children: [{
+            id: 'followup',
+            type: 'message',
+            label: 'LinkedIn Message',
+            data: {
+              message: 'Hi {{firstName}}, just wanted to follow up on my email...',
+            },
+            position: { x: 0, y: 600 },
+            children: [{
+              id: 'end',
+              type: 'end',
+              label: 'End Campaign',
+              data: {},
+              position: { x: 0, y: 750 }
+            }]
+          }]
+        }]
+      }]
+    }]
+  });
+
+  // Default complex sequence with multiple branches
+  const getDefaultComplexSequence = (): SequenceNode => ({
+    id: '1',
+    type: 'send_invite_with_note',
+    label: 'Send LinkedIn Invite with note',
+    data: {
+      message: "Hi {{firstName}}, I came across your profile and was impressed by your work at {{company}}. Would love to connect!"
+    },
+    position: { x: 0, y: 0 },
+    children: [{
+      id: '2',
+      type: 'delay',
+      label: 'Wait 3 Days',
+      data: { delay: 3, delayUnit: 'days' },
+      position: { x: 0, y: 150 },
+      children: [{
+        id: '3',
+        type: 'condition',
+        label: 'If connected',
+        data: { conditionType: 'if_connected', conditionLabel: 'If connected' },
+        position: { x: 0, y: 300 },
+        trueBranch: [{
+          id: '4',
+          type: 'message',
+          label: 'LinkedIn Message',
+          data: { message: "Thanks for connecting, {{firstName}}! I'd love to learn more about your work at {{company}}." },
+          position: { x: -200, y: 450 },
+          children: [{
+            id: '5',
+            type: 'delay',
+            label: 'Wait 2 Days',
+            data: { delay: 2, delayUnit: 'days' },
+            position: { x: -200, y: 600 },
+            children: [{
+              id: '6',
+              type: 'condition',
+              label: 'If responded',
+              data: { conditionType: 'if_responded', conditionLabel: 'If responded' },
+              position: { x: -200, y: 750 },
+              trueBranch: [{
+                id: '7',
+                type: 'send_email',
+                label: 'Send Email',
+                data: { subject: 'Great connecting with you!', message: 'Hi {{firstName}}, following up on our conversation...' },
+                position: { x: -350, y: 900 },
+                children: [{
+                  id: '8',
+                  type: 'end',
+                  label: 'End Campaign',
+                  data: {},
+                  position: { x: -350, y: 1050 }
+                }]
+              }],
+              falseBranch: [{
+                id: '9',
+                type: 'delay',
+                label: 'Wait 3 Days',
+                data: { delay: 3, delayUnit: 'days' },
+                position: { x: -50, y: 900 },
+                children: [{
+                  id: '10',
+                  type: 'follow',
+                  label: 'Follow Profile',
+                  data: {},
+                  position: { x: -50, y: 1050 },
+                  children: [{
+                    id: '11',
+                    type: 'delay',
+                    label: 'Wait 2 Days',
+                    data: { delay: 2, delayUnit: 'days' },
+                    position: { x: -50, y: 1200 },
+                    children: [{
+                      id: '12',
+                      type: 'inmail',
+                      label: 'InMail',
+                      data: { message: 'Hi {{firstName}}, wanted to reach out again...' },
+                      position: { x: -50, y: 1350 },
+                      children: [{
+                        id: '13',
+                        type: 'end',
+                        label: 'End Campaign',
+                        data: {},
+                        position: { x: -50, y: 1500 }
+                      }]
+                    }]
+                  }]
+                }]
+              }]
+            }]
+          }]
+        }],
+        falseBranch: [{
+          id: '14',
+          type: 'delay',
+          label: 'Wait 2 Days',
+          data: { delay: 2, delayUnit: 'days' },
+          position: { x: 200, y: 450 },
+          children: [{
+            id: '15',
+            type: 'follow',
+            label: 'Follow Profile',
+            data: {},
+            position: { x: 200, y: 600 },
+            children: [{
+              id: '16',
+              type: 'delay',
+              label: 'Wait 3 Days',
+              data: { delay: 3, delayUnit: 'days' },
+              position: { x: 200, y: 750 },
+              children: [{
+                id: '17',
+                type: 'send_email',
+                label: 'Send Email',
+                data: { subject: 'Connecting outside LinkedIn', message: 'Hi {{firstName}}, wanted to reach you via email...' },
+                position: { x: 200, y: 900 },
+                children: [{
+                  id: '18',
+                  type: 'delay',
+                  label: 'Wait 4 Days',
+                  data: { delay: 4, delayUnit: 'days' },
+                  position: { x: 200, y: 1050 },
+                  children: [{
+                    id: '19',
+                    type: 'condition',
+                    label: 'If user acknowledges',
+                    data: { conditionType: 'if_user_acknowledges', conditionLabel: 'If user acknowledges / says yes' },
+                    position: { x: 200, y: 1200 },
+                    trueBranch: [{
+                      id: '20',
+                      type: 'message',
+                      label: 'LinkedIn Message',
+                      data: { message: 'Thanks for your response!' },
+                      position: { x: 50, y: 1350 },
+                      children: [{
+                        id: '21',
+                        type: 'end',
+                        label: 'End Campaign',
+                        data: {},
+                        position: { x: 50, y: 1500 }
+                      }]
+                    }],
+                    falseBranch: [{
+                      id: '22',
+                      type: 'withdraw_invite',
+                      label: 'Withdraw Invite',
+                      data: {},
+                      position: { x: 350, y: 1350 },
+                      children: [{
+                        id: '23',
+                        type: 'end',
+                        label: 'End Campaign',
+                        data: {},
+                        position: { x: 350, y: 1500 }
+                      }]
+                    }]
+                  }]
+                }]
+              }]
+            }]
+          }]
+        }]
+      }]
+    }]
+  });
+
+  const [sequenceTree, setSequenceTree] = useState<SequenceNode | null>(getDefaultComplexSequence());
 
   const [messageForm, setMessageForm] = useState({
     message: '',
@@ -152,7 +464,20 @@ export default function SequenceBuilderPage() {
     unit: 'days' as 'hours' | 'days'
   });
 
-  const [conditionForm, setConditionForm] = useState<ConditionType>('if_not_accepted');
+  const [conditionForm, setConditionForm] = useState<ConditionType>('if_connected');
+
+  // Branch actions configuration
+  const [branchConfig, setBranchConfig] = useState<{
+    trueBranchAction: ActionType | 'delay' | 'none';
+    falseBranchAction: ActionType | 'delay' | 'none';
+    trueMessage?: string;
+    falseMessage?: string;
+    trueDelay?: number;
+    falseDelay?: number;
+  }>({
+    trueBranchAction: 'none',
+    falseBranchAction: 'none'
+  });
 
   // Available audience groups
   const audienceGroups = [
@@ -166,8 +491,8 @@ export default function SequenceBuilderPage() {
   // Comprehensive template sequence with pre-filled messages
   const templateSequence: SequenceNode = {
     id: '1',
-    type: 'send_invite',
-    label: 'Send an invite',
+    type: 'send_invite_with_note',
+    label: 'Send LinkedIn Invite with note',
     data: {
       message: "Hi {{First name}},\n\nI noticed your impressive work at {{Company}} and would love to connect! I believe we could share valuable insights about {{Position}}.\n\nLooking forward to connecting!\n\nBest regards"
     },
@@ -190,8 +515,8 @@ export default function SequenceBuilderPage() {
               // NOT CONNECTED PATH (LEFT)
               {
                 id: '4',
-                type: 'view_profile',
-                label: 'View profile',
+                type: 'follow',
+                label: 'Follow Profile',
                 data: {},
                 position: { x: 200, y: 350 },
                 children: [
@@ -236,8 +561,8 @@ export default function SequenceBuilderPage() {
                                       {
                                         id: '10',
                                         type: 'condition',
-                                        label: 'If responded to InMail',
-                                        data: { conditionType: 'if_responded_inmail', conditionLabel: 'If responded to InMail' },
+                                        label: 'If responded',
+                                        data: { conditionType: 'if_responded', conditionLabel: 'If responded' },
                                         position: { x: 200, y: 950 },
                                         children: [
                                           {
@@ -306,15 +631,15 @@ export default function SequenceBuilderPage() {
                           {
                             id: '17',
                             type: 'condition',
-                            label: 'If viewed message',
-                            data: { conditionType: 'if_viewed_message', conditionLabel: 'If viewed message' },
+                            label: 'If user acknowledges',
+                            data: { conditionType: 'if_user_acknowledges', conditionLabel: 'If user acknowledges / says yes' },
                             position: { x: 600, y: 650 },
                             children: [
-                              // NOT VIEWED PATH
+                              // NOT ACKNOWLEDGED PATH
                               {
                                 id: '18',
-                                type: 'view_profile',
-                                label: 'View profile',
+                                type: 'follow',
+                                label: 'Follow Profile',
                                 data: {},
                                 position: { x: 500, y: 750 },
                                 children: [
@@ -327,9 +652,11 @@ export default function SequenceBuilderPage() {
                                     children: [
                                       {
                                         id: '20',
-                                        type: 'endorse_skills',
-                                        label: 'Endorse skills',
-                                        data: {},
+                                        type: 'inmail',
+                                        label: 'InMail',
+                                        data: {
+                                          message: "Hi {{First name}}, just wanted to follow up..."
+                                        },
                                         position: { x: 500, y: 950 },
                                         children: [
                                           {
@@ -375,93 +702,38 @@ export default function SequenceBuilderPage() {
                                   }
                                 ]
                               },
-                              // VIEWED PATH
+                              // ACKNOWLEDGED PATH
                               {
                                 id: '25',
                                 type: 'delay',
-                                label: 'No delay',
-                                data: { delay: 0, delayUnit: 'hours' },
+                                label: 'Wait 1 day',
+                                data: { delay: 1, delayUnit: 'days' },
                                 position: { x: 700, y: 750 },
                                 children: [
                                   {
                                     id: '26',
-                                    type: 'message',
-                                    label: 'Message',
+                                    type: 'send_email',
+                                    label: 'Send Email',
                                     data: {
-                                      message: "Hi {{First name}},\n\nI hope you had a chance to see my previous message! I wanted to share a quick resource that might be valuable for {{Company}}.\n\n[Share relevant case study/resource]\n\nLet me know if you'd like to discuss how this could apply to your situation.\n\nCheers! ✨"
+                                      subject: 'Following up from LinkedIn - {{Company}}',
+                                      message: "Hi {{First name}},\n\nI wanted to reach out via email as well to make sure we stay connected!\n\nI've been thinking about how we could collaborate, and I have a few ideas that might benefit {{Company}}.\n\nWould you be available for a brief call this week?\n\nBest regards"
                                     },
                                     position: { x: 700, y: 850 },
                                     children: [
                                       {
                                         id: '27',
                                         type: 'delay',
-                                        label: 'Wait 4 days',
-                                        data: { delay: 4, delayUnit: 'days' },
+                                        label: 'Wait 7 days',
+                                        data: { delay: 7, delayUnit: 'days' },
                                         position: { x: 700, y: 950 },
                                         children: [
                                           {
                                             id: '28',
-                                            type: 'find_email',
-                                            label: 'Find email',
+                                            type: 'end',
+                                            label: 'End of sequence',
                                             data: {},
                                             position: { x: 700, y: 1050 },
-                                            children: [
-                                              {
-                                                id: '29',
-                                                type: 'delay',
-                                                label: 'Wait 1 hour',
-                                                data: { delay: 1, delayUnit: 'hours' },
-                                                position: { x: 700, y: 1150 },
-                                                children: [
-                                                  {
-                                                    id: '30',
-                                                    type: 'condition',
-                                                    label: 'If email available',
-                                                    data: { conditionType: 'if_email_available', conditionLabel: 'If email available' },
-                                                    position: { x: 700, y: 1250 },
-                                                    children: [
-                                                      {
-                                                        id: '31',
-                                                        type: 'end',
-                                                        label: 'End of sequence',
-                                                        data: {},
-                                                        position: { x: 600, y: 1350 },
-                                                        children: []
-                                                      },
-                                                      {
-                                                        id: '32',
-                                                        type: 'send_email',
-                                                        label: 'Send email',
-                                                        data: {
-                                                          subject: 'Following up from LinkedIn - {{Company}}',
-                                                          message: "Hi {{First name}},\n\nI wanted to reach out via email as well to make sure we stay connected!\n\nI've been thinking about how we could collaborate, and I have a few ideas that might benefit {{Company}}.\n\nWould you be available for a brief call this week? I promise to keep it concise and valuable.\n\nBest regards,\n[Your Name]\n[Your Title]\n[Your Contact]"
-                                                        },
-                                                        position: { x: 800, y: 1350 },
-                                                        children: [
-                                                          {
-                                                            id: '33',
-                                                            type: 'delay',
-                                                            label: 'Wait 7 days',
-                                                            data: { delay: 7, delayUnit: 'days' },
-                                                            position: { x: 800, y: 1450 },
-                                                            children: [
-                                                              {
-                                                                id: '34',
-                                                                type: 'end',
-                                                                label: 'End of sequence',
-                                                                data: {},
-                                                                position: { x: 800, y: 1550 },
-                                                                children: []
-                                                              }
-                                                            ]
-                                                          }
-                                                        ]
-                                                      }
-                                                    ]
-                                                  }
-                                                ]
-                                              }
-                                            ]
+                                            children: []
                                           }
                                         ]
                                       }
@@ -555,38 +827,29 @@ export default function SequenceBuilderPage() {
   };
 
   const availableActions = [
-    { type: 'send_invite' as const, label: 'Send an invite', icon: UserPlus, description: 'Send connection request' },
-    { type: 'message' as const, label: 'Message', icon: MessageSquare, description: 'Send LinkedIn message' },
+    { type: 'send_invite' as const, label: 'Send LinkedIn Invite', icon: UserPlus, description: 'Send connection request' },
+    { type: 'send_invite_with_note' as const, label: 'Send LinkedIn Invite with note', icon: UserPlus, description: 'Send connection request with personalized note' },
+    { type: 'message' as const, label: 'LinkedIn Message', icon: MessageSquare, description: 'Send LinkedIn message' },
     { type: 'inmail' as const, label: 'InMail', icon: Mail, description: 'Send LinkedIn InMail' },
-    { type: 'view_profile' as const, label: 'View profile', icon: Eye, description: 'View their profile' },
-    { type: 'endorse_skills' as const, label: 'Endorse skills', icon: CheckCircle, description: 'Endorse top skills' },
-    { type: 'follow' as const, label: 'Follow', icon: UserCheck, description: 'Follow their profile' },
-    { type: 'like_post' as const, label: 'Like a post', icon: Heart, description: 'Like their recent post' },
-    { type: 'find_email' as const, label: 'Find email', icon: LinkIcon, description: 'Find email address' },
-    { type: 'send_email' as const, label: 'Send email', icon: Send, description: 'Send email (NEW)', isNew: true },
-    { type: 'withdraw_invite' as const, label: 'Withdraw invite', icon: StopCircle, description: 'Withdraw connection' }
+    { type: 'follow' as const, label: 'Follow Profile', icon: UserCheck, description: 'Follow their profile' },
+    { type: 'send_email' as const, label: 'Send Email', icon: Send, description: 'Send email' },
+    { type: 'withdraw_invite' as const, label: 'Withdraw Invite', icon: StopCircle, description: 'Withdraw connection request' }
   ];
 
   const availableConditions = [
     { type: 'if_connected' as const, label: 'If connected', icon: UserCheck },
-    { type: 'if_viewed_message' as const, label: 'If viewed message', icon: Eye },
-    { type: 'if_email_available' as const, label: 'If email available', icon: Mail },
-    { type: 'if_open_profile' as const, label: 'If open profile', icon: Eye },
-    { type: 'if_responded_inmail' as const, label: 'If responded to InMail', icon: MessageSquare },
-    { type: 'if_not_accepted' as const, label: 'If not accepted', icon: XCircle },
+    { type: 'if_viewed_inmail' as const, label: 'If viewed InMail', icon: Eye },
+    { type: 'if_responded' as const, label: 'If responded', icon: MessageSquare },
     { type: 'if_user_acknowledges' as const, label: 'If user acknowledges / says yes', icon: ThumbsUp }
   ];
 
   const getActionIcon = (type: ActionType | 'delay' | 'condition' | 'end') => {
     switch(type) {
       case 'send_invite': return UserPlus;
+      case 'send_invite_with_note': return UserPlus;
       case 'message': return MessageSquare;
       case 'inmail': return Mail;
-      case 'view_profile': return Eye;
-      case 'endorse_skills': return CheckCircle;
       case 'follow': return UserCheck;
-      case 'like_post': return Heart;
-      case 'find_email': return LinkIcon;
       case 'send_email': return Send;
       case 'withdraw_invite': return StopCircle;
       case 'delay': return Clock;
@@ -646,24 +909,83 @@ export default function SequenceBuilderPage() {
     return tree;
   };
 
+  // Helper function to add node to branch
+  const insertNodeToBranch = (tree: SequenceNode | null, nodeId: string, newNode: SequenceNode, branchPath: 'true' | 'false'): SequenceNode | null => {
+    if (!tree) return null;
+    
+    if (tree.id === nodeId) {
+      if (branchPath === 'true') {
+        return {
+          ...tree,
+          trueBranch: tree.trueBranch ? [...tree.trueBranch, newNode] : [newNode]
+        };
+      } else {
+        return {
+          ...tree,
+          falseBranch: tree.falseBranch ? [...tree.falseBranch, newNode] : [newNode]
+        };
+      }
+    }
+    
+    // Search in children
+    if (tree.children) {
+      return {
+        ...tree,
+        children: tree.children.map(child => insertNodeToBranch(child, nodeId, newNode, branchPath)).filter((child): child is SequenceNode => child !== null)
+      };
+    }
+    
+    // Search in trueBranch
+    if (tree.trueBranch) {
+      return {
+        ...tree,
+        trueBranch: tree.trueBranch.map(child => insertNodeToBranch(child, nodeId, newNode, branchPath)).filter((child): child is SequenceNode => child !== null)
+      };
+    }
+    
+    // Search in falseBranch
+    if (tree.falseBranch) {
+      return {
+        ...tree,
+        falseBranch: tree.falseBranch.map(child => insertNodeToBranch(child, nodeId, newNode, branchPath)).filter((child): child is SequenceNode => child !== null)
+      };
+    }
+    
+    return tree;
+  };
+
   // Add action handlers
   const handleAddAction = (actionType: ActionType, afterNodeId: string) => {
-    const needsMessageConfig = actionType === 'message' || actionType === 'inmail' || actionType === 'send_email';
+    const needsMessageConfig = actionType === 'message' || actionType === 'inmail' || actionType === 'send_email' || actionType === 'send_invite_with_note';
     
     if (needsMessageConfig) {
       setCurrentAction(actionType);
       setInsertAfterNodeId(afterNodeId);
       setShowMessageDialog(true);
     } else {
-      // Add action directly
-      const newNode: SequenceNode = {
-        id: Date.now().toString(),
-        type: actionType,
-        label: availableActions.find(a => a.type === actionType)?.label || actionType,
-        data: {},
-        position: { x: 0, y: 0 }
-      };
-      setSequenceTree(insertNodeAfter(sequenceTree, afterNodeId, newNode));
+      // Check if adding to branch
+      if (selectedBranchNodeId && selectedBranchPath) {
+        const newNode: SequenceNode = {
+          id: Date.now().toString(),
+          type: actionType,
+          label: availableActions.find(a => a.type === actionType)?.label || actionType,
+          data: {},
+          position: { x: 0, y: 0 }
+        };
+        setSequenceTree(insertNodeToBranch(sequenceTree, selectedBranchNodeId, newNode, selectedBranchPath));
+        setSelectedBranchNodeId(null);
+        setSelectedBranchPath(null);
+      } else {
+        // Add action directly to regular flow
+        const newNode: SequenceNode = {
+          id: Date.now().toString(),
+          type: actionType,
+          label: availableActions.find(a => a.type === actionType)?.label || actionType,
+          data: {},
+          position: { x: 0, y: 0 }
+        };
+        setSequenceTree(insertNodeAfter(sequenceTree, afterNodeId, newNode));
+      }
       setShowAddActionMenu(false);
     }
   };
@@ -703,7 +1025,7 @@ export default function SequenceBuilderPage() {
         if (updatedTree) setSequenceTree(updatedTree);
       }
       setSelectedNode(null);
-    } else if (insertAfterNodeId) {
+    } else if (insertAfterNodeId || (selectedBranchNodeId && selectedBranchPath)) {
       // Adding new node
       const newNode: SequenceNode = {
         id: Date.now().toString(),
@@ -716,7 +1038,14 @@ export default function SequenceBuilderPage() {
         position: { x: 0, y: 0 }
       };
 
-      setSequenceTree(insertNodeAfter(sequenceTree, insertAfterNodeId, newNode));
+      // Check if adding to branch
+      if (selectedBranchNodeId && selectedBranchPath) {
+        setSequenceTree(insertNodeToBranch(sequenceTree, selectedBranchNodeId, newNode, selectedBranchPath));
+        setSelectedBranchNodeId(null);
+        setSelectedBranchPath(null);
+      } else if (insertAfterNodeId) {
+        setSequenceTree(insertNodeAfter(sequenceTree, insertAfterNodeId, newNode));
+      }
     }
     
     setMessageForm({ message: '', subject: '', personalizationVars: messageForm.personalizationVars });
@@ -727,7 +1056,7 @@ export default function SequenceBuilderPage() {
   };
 
   const handleSaveDelay = () => {
-    if (!insertAfterNodeId) return;
+    if (!insertAfterNodeId && !selectedBranchNodeId) return;
 
     const newNode: SequenceNode = {
       id: Date.now().toString(),
@@ -740,7 +1069,15 @@ export default function SequenceBuilderPage() {
       position: { x: 0, y: 0 }
     };
 
-    setSequenceTree(insertNodeAfter(sequenceTree, insertAfterNodeId, newNode));
+    // Check if adding to branch
+    if (selectedBranchNodeId && selectedBranchPath) {
+      setSequenceTree(insertNodeToBranch(sequenceTree, selectedBranchNodeId, newNode, selectedBranchPath));
+      setSelectedBranchNodeId(null);
+      setSelectedBranchPath(null);
+    } else if (insertAfterNodeId) {
+      setSequenceTree(insertNodeAfter(sequenceTree, insertAfterNodeId, newNode));
+    }
+
     setShowDelayDialog(false);
     setInsertAfterNodeId(null);
     setShowAddActionMenu(false);
@@ -751,6 +1088,29 @@ export default function SequenceBuilderPage() {
 
     const conditionLabel = availableConditions.find(c => c.type === conditionForm)?.label || 'Condition';
 
+    // Create nodes for branches based on configuration
+    const createBranchNode = (actionType: ActionType | 'delay' | 'none', message?: string, delay?: number): SequenceNode[] => {
+      if (actionType === 'none') return [];
+      
+      if (actionType === 'delay') {
+        return [{
+          id: Date.now().toString() + '-delay-' + Math.random(),
+          type: 'delay',
+          label: `Wait ${delay || 3} days`,
+          data: { delay: delay || 3, delayUnit: 'days' as 'days' },
+          position: { x: 0, y: 0 }
+        }];
+      }
+      
+      return [{
+        id: Date.now().toString() + '-action-' + Math.random(),
+        type: actionType,
+        label: availableActions.find(a => a.type === actionType)?.label || actionType,
+        data: message ? { message } : {},
+        position: { x: 0, y: 0 }
+      }];
+    };
+
     const newNode: SequenceNode = {
       id: Date.now().toString(),
       type: 'condition',
@@ -760,28 +1120,20 @@ export default function SequenceBuilderPage() {
         conditionLabel: conditionLabel
       },
       position: { x: 0, y: 0 },
-      children: [
-        {
-          id: Date.now().toString() + '-1',
-          type: 'end',
-          label: 'End of sequence',
-          data: {},
-          position: { x: 0, y: 0 }
-        },
-        {
-          id: Date.now().toString() + '-2',
-          type: 'end',
-          label: 'End of sequence',
-          data: {},
-          position: { x: 0, y: 0 }
-        }
-      ]
+      trueBranch: createBranchNode(branchConfig.trueBranchAction, branchConfig.trueMessage, branchConfig.trueDelay),
+      falseBranch: createBranchNode(branchConfig.falseBranchAction, branchConfig.falseMessage, branchConfig.falseDelay)
     };
 
     setSequenceTree(insertNodeAfter(sequenceTree, insertAfterNodeId, newNode));
     setShowConditionDialog(false);
     setInsertAfterNodeId(null);
     setShowAddActionMenu(false);
+    
+    // Reset branch config
+    setBranchConfig({
+      trueBranchAction: 'none',
+      falseBranchAction: 'none'
+    });
 
     // Check if it's the "if user acknowledges" condition
     if (conditionForm === 'if_user_acknowledges') {
@@ -893,20 +1245,24 @@ export default function SequenceBuilderPage() {
             </div>
           ) : isCondition ? (
             <div className="flex flex-col items-center relative">
-              <div className="px-4 py-2 rounded-lg bg-gradient-to-r from-red-500/80 to-red-600/80 text-white text-xs font-medium shadow-lg">
-                {node.data.conditionLabel || node.label}
+              <div className="relative">
+                <div className="px-6 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-red-600 text-white text-sm font-semibold shadow-lg border-2 border-orange-400/50 flex items-center gap-2">
+                  <GitBranch className="w-5 h-5" />
+                  <span>{node.data.conditionLabel || node.label}</span>
+                </div>
+                <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteNode(node.id);
+                    }}
+                    className="p-1.5 rounded-full bg-red-500 hover:bg-red-600 shadow-lg"
+                  >
+                    <X className="w-3.5 h-3.5 text-white" />
+                  </button>
+                </div>
               </div>
-              <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteNode(node.id);
-                  }}
-                  className="p-1 rounded-full bg-red-500 hover:bg-red-600"
-                >
-                  <X className="w-3 h-3 text-white" />
-                </button>
-              </div>
+              <p className="text-xs text-gray-400 mt-2">Decision Point</p>
             </div>
           ) : isEnd ? (
             <div className="flex flex-col items-center">
@@ -932,6 +1288,21 @@ export default function SequenceBuilderPage() {
                   </div>
                 </div>
               )}
+              {/* View Prospects Icon */}
+              <div className="absolute -top-2 -left-2 opacity-0 group-hover/btn:opacity-100 transition-opacity">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedNodeForProspects(node.id);
+                    setShowProspectView(true);
+                  }}
+                  className="p-1.5 rounded-full bg-cyan-500 hover:bg-cyan-600 shadow-lg"
+                  title="View Prospects"
+                >
+                  <Users className="w-3.5 h-3.5 text-white" />
+                </button>
+              </div>
+              {/* Delete Icon */}
               <div className="absolute -top-2 -right-2 opacity-0 group-hover/btn:opacity-100 transition-opacity flex gap-1">
                 <button
                   onClick={(e) => {
@@ -947,42 +1318,150 @@ export default function SequenceBuilderPage() {
           )}
         </motion.div>
 
-        {/* Add button */}
+        {/* Add button with arrow */}
         {!isEnd && (
-          <div className="relative">
-            <div className="w-1 h-8 bg-gradient-to-b from-slate-400 via-slate-500 to-slate-600 shadow-[0_0_8px_rgba(148,163,184,0.5)]"></div>
-            <motion.button
-              whileHover={{ scale: 1.2 }}
-              onClick={() => {
-                setInsertAfterNodeId(node.id);
-                setShowAddActionMenu(true);
-              }}
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-2 rounded-full bg-cyan-500 hover:bg-cyan-600 text-white shadow-lg opacity-0 hover:opacity-100 transition-opacity group-hover:opacity-100 z-10"
-            >
-              <Plus className="w-4 h-4" />
-            </motion.button>
+          <div className="relative flex flex-col items-center">
+            <div className="w-1 h-4 bg-gradient-to-b from-slate-400 via-slate-500 to-slate-600 shadow-[0_0_8px_rgba(148,163,184,0.5)]"></div>
+            <div className="relative">
+              <motion.div
+                animate={{ y: [0, 4, 0] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                className="flex flex-col items-center"
+              >
+                <ChevronDown className="w-5 h-5 text-cyan-400 drop-shadow-[0_0_6px_rgba(34,211,238,0.5)]" />
+              </motion.div>
+              <motion.button
+                whileHover={{ scale: 1.2 }}
+                onClick={() => {
+                  setInsertAfterNodeId(node.id);
+                  setShowAddActionMenu(true);
+                }}
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-2 rounded-full bg-cyan-500 hover:bg-cyan-600 text-white shadow-lg opacity-0 hover:opacity-100 transition-opacity group-hover:opacity-100 z-10"
+              >
+                <Plus className="w-4 h-4" />
+              </motion.button>
+            </div>
+            <div className="w-1 h-4 bg-gradient-to-b from-slate-600 to-slate-700"></div>
           </div>
         )}
 
-        {/* Children */}
-        {node.children && node.children.length > 0 && (
-          <div className="flex flex-col items-center">
-            {node.children.length > 1 && isCondition ? (
-              <div className="flex gap-16 relative pt-8">
-                {node.children.map((child, idx) => (
-                  <div key={child.id} className="flex-1">
-                    {idx > 0 && (
-                      <div className="text-xs text-green-400 mb-4 text-center font-medium">
-                        Accepted
-                      </div>
-                    )}
-                    {renderNode(child, depth + 1)}
-                  </div>
-                ))}
+        {/* Children or Branches */}
+        {isCondition && (node.trueBranch || node.falseBranch) ? (
+          <>
+            {/* Connecting lines from condition to branches */}
+            <div className="flex flex-col items-center">
+              <div className="w-1 h-8 bg-gradient-to-b from-slate-500 to-slate-600"></div>
+              <div className="relative w-48 h-12">
+                {/* Left diagonal line to TRUE */}
+                <svg className="absolute top-0 left-0 w-full h-full" style={{ overflow: 'visible' }}>
+                  <defs>
+                    <linearGradient id="greenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" style={{ stopColor: '#64748b', stopOpacity: 1 }} />
+                      <stop offset="100%" style={{ stopColor: '#22c55e', stopOpacity: 1 }} />
+                    </linearGradient>
+                  </defs>
+                  <line 
+                    x1="50%" 
+                    y1="0" 
+                    x2="0%" 
+                    y2="100%" 
+                    stroke="url(#greenGradient)" 
+                    strokeWidth="2"
+                    className="drop-shadow-[0_0_4px_rgba(34,197,94,0.3)]"
+                  />
+                </svg>
+                {/* Right diagonal line to FALSE */}
+                <svg className="absolute top-0 left-0 w-full h-full" style={{ overflow: 'visible' }}>
+                  <defs>
+                    <linearGradient id="redGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" style={{ stopColor: '#64748b', stopOpacity: 1 }} />
+                      <stop offset="100%" style={{ stopColor: '#ef4444', stopOpacity: 1 }} />
+                    </linearGradient>
+                  </defs>
+                  <line 
+                    x1="50%" 
+                    y1="0" 
+                    x2="100%" 
+                    y2="100%" 
+                    stroke="url(#redGradient)" 
+                    strokeWidth="2"
+                    className="drop-shadow-[0_0_4px_rgba(239,68,68,0.3)]"
+                  />
+                </svg>
               </div>
-            ) : (
-              node.children.map(child => renderNode(child, depth + 1))
-            )}
+            </div>
+
+            <div className="flex gap-24 relative">
+              {/* True Branch */}
+              <div className="flex-1 flex flex-col items-center relative">
+                <div className="px-3 py-1 rounded-full bg-green-500/20 border border-green-500/50 text-green-400 text-xs font-semibold flex items-center gap-1 mb-2">
+                  <CheckCircle className="w-3 h-3" />
+                  TRUE / YES
+                </div>
+                <div className="flex flex-col items-center mb-2">
+                  <motion.div
+                    animate={{ y: [0, 3, 0] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <ChevronDown className="w-5 h-5 text-green-400 drop-shadow-[0_0_6px_rgba(34,197,94,0.5)]" />
+                  </motion.div>
+                  <div className="w-1 h-3 bg-gradient-to-b from-green-500 to-green-600"></div>
+                </div>
+              {node.trueBranch && node.trueBranch.length > 0 ? (
+                node.trueBranch.map(child => renderNode(child, depth + 1))
+              ) : (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  onClick={() => {
+                    setSelectedBranchNodeId(node.id);
+                    setSelectedBranchPath('true');
+                    setShowAddActionMenu(true);
+                  }}
+                  className="px-6 py-3 rounded-xl border-2 border-dashed border-green-500/30 bg-green-500/5 hover:bg-green-500/10 text-green-400 flex items-center gap-2 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="text-sm font-medium">Add Action for TRUE path</span>
+                </motion.button>
+              )}
+            </div>
+
+              {/* False Branch */}
+              <div className="flex-1 flex flex-col items-center relative">
+                <div className="px-3 py-1 rounded-full bg-red-500/20 border border-red-500/50 text-red-400 text-xs font-semibold flex items-center gap-1 mb-2">
+                  <XCircle className="w-3 h-3" />
+                  FALSE / NO
+                </div>
+                <div className="flex flex-col items-center mb-2">
+                  <motion.div
+                    animate={{ y: [0, 3, 0] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <ChevronDown className="w-5 h-5 text-red-400 drop-shadow-[0_0_6px_rgba(239,68,68,0.5)]" />
+                  </motion.div>
+                  <div className="w-1 h-3 bg-gradient-to-b from-red-500 to-red-600"></div>
+                </div>
+              {node.falseBranch && node.falseBranch.length > 0 ? (
+                node.falseBranch.map(child => renderNode(child, depth + 1))
+              ) : (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  onClick={() => {
+                    setSelectedBranchNodeId(node.id);
+                    setSelectedBranchPath('false');
+                    setShowAddActionMenu(true);
+                  }}
+                  className="px-6 py-3 rounded-xl border-2 border-dashed border-red-500/30 bg-red-500/5 hover:bg-red-500/10 text-red-400 flex items-center gap-2 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="text-sm font-medium">Add Action for FALSE path</span>
+                </motion.button>
+              )}
+              </div>
+            </div>
+          </>
+        ) : node.children && node.children.length > 0 && (
+          <div className="flex flex-col items-center">
+            {node.children.map(child => renderNode(child, depth + 1))}
           </div>
         )}
       </div>
@@ -1331,10 +1810,25 @@ export default function SequenceBuilderPage() {
                   <div className="flex justify-center">
                     {sequenceTree ? renderNode(sequenceTree) : (
                       <div className="flex items-center justify-center h-[600px]">
-                        <div className="text-center">
-                          <Loader className="w-12 h-12 text-gray-500 animate-spin mx-auto mb-4" />
-                          <p className="text-gray-400">Loading sequence...</p>
-                        </div>
+                        <Card className="border-white/10 bg-slate-900/50 backdrop-blur-xl max-w-md">
+                          <CardContent className="p-12 text-center">
+                            <div className="p-4 rounded-full bg-cyan-500/10 w-fit mx-auto mb-4">
+                              <Users className="w-12 h-12 text-cyan-400" />
+                            </div>
+                            <h3 className="text-xl font-semibold text-white mb-2">No Sequence Generated Yet</h3>
+                            <p className="text-gray-400 mb-6">
+                              Start by selecting your audience and outreach type in the Audience tab. 
+                              Then generate a sequence template to begin editing.
+                            </p>
+                            <Button
+                              onClick={() => setViewMode('audience')}
+                              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
+                            >
+                              <Users className="w-4 h-4 mr-2" />
+                              Go to Audience
+                            </Button>
+                          </CardContent>
+                        </Card>
                       </div>
                     )}
                   </div>
@@ -1359,6 +1853,127 @@ export default function SequenceBuilderPage() {
                   Create New Group
                 </Button>
               </div>
+
+              {/* Outreach Type Selection */}
+              <Card className="border-white/10 bg-slate-900/50 backdrop-blur-xl">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-cyan-400" />
+                    Select Outreach Type
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Single Channel Option */}
+                    <div 
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                        outreachType === 'single' 
+                          ? 'border-cyan-500 bg-cyan-500/10' 
+                          : 'border-white/10 bg-slate-800/50 hover:border-white/20'
+                      }`}
+                      onClick={() => setOutreachType('single')}
+                    >
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="radio"
+                          checked={outreachType === 'single'}
+                          onChange={() => setOutreachType('single')}
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <div className="text-white font-semibold mb-1 flex items-center gap-2">
+                            Single Channel
+                            <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30 text-xs">
+                              Focused
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-400 mb-3">Focus on one channel for targeted outreach</p>
+                          
+                          {outreachType === 'single' && (
+                            <div className="mt-3 space-y-2 pl-6">
+                              <label className="flex items-center gap-2 cursor-pointer group">
+                                <input
+                                  type="radio"
+                                  name="singleChannel"
+                                  checked={singleChannelType === 'email'}
+                                  onChange={() => setSingleChannelType('email')}
+                                  className="text-cyan-500"
+                                />
+                                <Mail className="w-4 h-4 text-gray-400 group-hover:text-cyan-400" />
+                                <span className="text-white">Email Only</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer group">
+                                <input
+                                  type="radio"
+                                  name="singleChannel"
+                                  checked={singleChannelType === 'linkedin'}
+                                  onChange={() => setSingleChannelType('linkedin')}
+                                  className="text-cyan-500"
+                                />
+                                <LinkIcon className="w-4 h-4 text-gray-400 group-hover:text-cyan-400" />
+                                <span className="text-white">LinkedIn Only</span>
+                              </label>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Multichannel Option */}
+                    <div 
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                        outreachType === 'multichannel' 
+                          ? 'border-cyan-500 bg-cyan-500/10' 
+                          : 'border-white/10 bg-slate-800/50 hover:border-white/20'
+                      }`}
+                      onClick={() => setOutreachType('multichannel')}
+                    >
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="radio"
+                          checked={outreachType === 'multichannel'}
+                          onChange={() => setOutreachType('multichannel')}
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <div className="text-white font-semibold mb-1 flex items-center gap-2">
+                            Multichannel
+                            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs">
+                              Maximum Reach
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-400 mb-3">Combine Email + LinkedIn for maximum impact</p>
+                          
+                          {outreachType === 'multichannel' && (
+                            <div className="mt-3 pl-6 flex items-center gap-2 text-sm text-gray-300">
+                              <Mail className="w-4 h-4 text-cyan-400" />
+                              <span>+</span>
+                              <LinkIcon className="w-4 h-4 text-blue-400" />
+                              <span className="text-xs text-gray-400">Both channels</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <Sparkles className="w-5 h-5 text-cyan-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-gray-300 font-medium mb-1">
+                          Template will be generated based on your selection
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {outreachType === 'single' 
+                            ? `A ${singleChannelType} sequence template will be created with follow-ups and best practices`
+                            : 'A multichannel sequence combining LinkedIn and Email touchpoints will be created'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Summary Card */}
               {groups.filter(g => g.selected).length > 0 && (
@@ -1390,11 +2005,43 @@ export default function SequenceBuilderPage() {
                       </Button>
                       <Button
                         size="sm"
-                        onClick={() => setShowStartChoice(true)}
+                        onClick={() => {
+                          // Check if multichannel - show filter dialog
+                          if (outreachType === 'multichannel') {
+                            const total = groups.filter(g => g.selected).reduce((sum, g) => sum + g.prospectCount, 0);
+                            // Simulate: 2/3 have both email and linkedin
+                            const complete = Math.floor(total * 0.67);
+                            const incomplete = total - complete;
+                            setTotalProspects(total);
+                            setCompleteProspects(complete);
+                            setIncompleteProspects(incomplete);
+                            setShowMultichannelFilterDialog(true);
+                          } else {
+                            // Single channel - generate directly
+                            if (singleChannelType === 'email') {
+                              setSequenceTree(getDefaultEmailTemplate());
+                            } else {
+                              setSequenceTree(getDefaultLinkedInTemplate());
+                            }
+                            // Switch to sequence tab
+                            setViewMode('sequence');
+                            // Show notification
+                            const notificationId = Date.now().toString();
+                            const templateType = singleChannelType === 'email' ? 'Email' : 'LinkedIn';
+                            setNotifications([...notifications, {
+                              id: notificationId,
+                              message: `✨ ${templateType} sequence template created! You can now edit it.`,
+                              type: 'success'
+                            }]);
+                            setTimeout(() => {
+                              setNotifications(prev => prev.filter(n => n.id !== notificationId));
+                            }, 5000);
+                          }
+                        }}
                         className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
                       >
                         <Play className="w-4 h-4 mr-2" />
-                        Start Workflow
+                        Generate Sequence
                       </Button>
                     </div>
                   </div>
@@ -1568,10 +2215,112 @@ export default function SequenceBuilderPage() {
           {/* Settings Tab */}
           <TabsContent value="settings">
             <Card className="border-white/10 bg-slate-900/50 backdrop-blur-xl">
-              <CardContent className="p-12 text-center">
-                <Settings className="w-16 h-16 mx-auto mb-4 text-gray-600" />
-                <h3 className="text-xl font-semibold text-white mb-2">Campaign Settings</h3>
-                <p className="text-gray-400">Configure your campaign preferences and rules</p>
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  Campaign Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Campaign Info */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-white">Campaign Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-slate-800/50 rounded-lg border border-white/10">
+                      <Label className="text-gray-400 text-sm">Campaign Name</Label>
+                      <p className="text-white font-semibold mt-1">{campaignName || 'Untitled Campaign'}</p>
+                    </div>
+                    <div className="p-4 bg-slate-800/50 rounded-lg border border-white/10">
+                      <Label className="text-gray-400 text-sm">Created Date</Label>
+                      <p className="text-white font-semibold mt-1">
+                        {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Outreach Type */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-white">Outreach Configuration</h3>
+                  <div className="p-4 bg-slate-800/50 rounded-lg border border-white/10">
+                    <Label className="text-gray-400 text-sm mb-2 block">Outreach Type</Label>
+                    <div className="flex items-center gap-2">
+                      {outreachType === 'single' ? (
+                        <>
+                          <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">
+                            {singleChannelType === 'email' ? 'Email' : 'LinkedIn'} Template
+                          </Badge>
+                          <span className="text-gray-400 text-sm">Single Channel</span>
+                        </>
+                      ) : (
+                        <>
+                          <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+                            Multichannel Template
+                          </Badge>
+                          <span className="text-gray-400 text-sm">Email + LinkedIn</span>
+                        </>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500 mt-2">
+                      {outreachType === 'single' 
+                        ? `This campaign uses a ${singleChannelType} sequence template`
+                        : 'This campaign combines Email and LinkedIn touchpoints'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Sequence Summary */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-white">Sequence Overview</h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="p-4 bg-slate-800/50 rounded-lg border border-white/10 text-center">
+                      <Sparkles className="w-8 h-8 mx-auto mb-2 text-cyan-400" />
+                      <p className="text-2xl font-bold text-white">
+                        {sequenceTree ? countNodes(sequenceTree) - countNodes(sequenceTree, 'end') : 0}
+                      </p>
+                      <p className="text-sm text-gray-400">Total Actions</p>
+                    </div>
+                    <div className="p-4 bg-slate-800/50 rounded-lg border border-white/10 text-center">
+                      <Clock className="w-8 h-8 mx-auto mb-2 text-blue-400" />
+                      <p className="text-2xl font-bold text-white">
+                        {sequenceTree ? countNodes(sequenceTree, 'delay') : 0}
+                      </p>
+                      <p className="text-sm text-gray-400">Delays</p>
+                    </div>
+                    <div className="p-4 bg-slate-800/50 rounded-lg border border-white/10 text-center">
+                      <GitBranch className="w-8 h-8 mx-auto mb-2 text-purple-400" />
+                      <p className="text-2xl font-bold text-white">
+                        {sequenceTree ? countNodes(sequenceTree, 'condition') : 0}
+                      </p>
+                      <p className="text-sm text-gray-400">Conditions</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Campaign Rules */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-white">Campaign Rules</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-white/10">
+                      <span className="text-gray-300">Track Opens</span>
+                      <Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/30">
+                        Enabled
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-white/10">
+                      <span className="text-gray-300">Track Clicks</span>
+                      <Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/30">
+                        Enabled
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-white/10">
+                      <span className="text-gray-300">Auto-stop on Reply</span>
+                      <Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/30">
+                        Enabled
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -1598,9 +2347,6 @@ export default function SequenceBuilderPage() {
                   <div className="flex items-center gap-3">
                     <action.icon className="w-4 h-4 text-gray-400" />
                     <span className="text-sm text-white">{action.label}</span>
-                    {action.isNew && (
-                      <Badge className="ml-auto bg-red-500/20 text-red-400 border-red-500/30 text-xs">NEW</Badge>
-                    )}
                   </div>
                 </button>
               ))}
@@ -1783,44 +2529,194 @@ export default function SequenceBuilderPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Condition Dialog */}
+      {/* Condition Dialog with Branch Configuration */}
       <Dialog open={showConditionDialog} onOpenChange={setShowConditionDialog}>
-        <DialogContent className="bg-slate-900 border-white/10 max-w-md">
+        <DialogContent className="bg-slate-900 border-white/10 max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-white text-xl">Add Condition</DialogTitle>
+            <DialogTitle className="text-white text-2xl flex items-center gap-2">
+              <GitBranch className="w-6 h-6 text-orange-400" />
+              Add Condition & Define Branches
+            </DialogTitle>
             <DialogDescription className="text-gray-400">
-              Branch your sequence based on prospect behavior
+              Select a condition and configure what happens in each scenario
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3 mt-4">
-            {availableConditions.map((condition) => (
-              <button
-                key={condition.type}
-                onClick={() => setConditionForm(condition.type)}
-                className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
-                  conditionForm === condition.type
-                    ? 'border-red-500 bg-red-500/10'
-                    : 'border-white/10 bg-slate-800/50 hover:border-red-500/50'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <condition.icon className={`w-5 h-5 ${conditionForm === condition.type ? 'text-red-400' : 'text-gray-400'}`} />
-                  <span className="text-sm font-medium text-white">{condition.label}</span>
-                </div>
-              </button>
-            ))}
+          <div className="space-y-6 mt-6">
+            {/* Condition Selection */}
+            <div>
+              <h3 className="text-sm font-semibold text-white mb-3">Select Condition Type</h3>
+              <div className="grid grid-cols-2 gap-3">
+                {availableConditions.map((condition) => (
+                  <button
+                    key={condition.type}
+                    onClick={() => setConditionForm(condition.type)}
+                    className={`p-3 rounded-lg border-2 transition-all text-left ${
+                      conditionForm === condition.type
+                        ? 'border-orange-500 bg-orange-500/10'
+                        : 'border-white/10 bg-slate-800/50 hover:border-orange-500/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <condition.icon className={`w-4 h-4 ${conditionForm === condition.type ? 'text-orange-400' : 'text-gray-400'}`} />
+                      <span className="text-xs font-medium text-white">{condition.label}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-            <div className="flex gap-3 pt-4">
+            {/* Branch Configuration */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* TRUE Branch */}
+              <div className="p-4 rounded-xl border-2 border-green-500/30 bg-green-500/5">
+                <div className="flex items-center gap-2 mb-3">
+                  <CheckCircle className="w-5 h-5 text-green-400" />
+                  <h3 className="text-sm font-bold text-green-400">TRUE / YES Path</h3>
+                </div>
+                <p className="text-xs text-gray-400 mb-3">What happens if condition is met?</p>
+                
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-300">Next Action</Label>
+                  <Select 
+                    value={branchConfig.trueBranchAction} 
+                    onValueChange={(val) => setBranchConfig({...branchConfig, trueBranchAction: val as any})}
+                  >
+                    <SelectTrigger className="bg-slate-800/50 border-green-500/30 text-white text-xs">
+                      <SelectValue placeholder="Select action" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No action (add later)</SelectItem>
+                      <SelectItem value="send_invite">Send LinkedIn Invite</SelectItem>
+                      <SelectItem value="send_invite_with_note">Send LinkedIn Invite with note</SelectItem>
+                      <SelectItem value="message">LinkedIn Message</SelectItem>
+                      <SelectItem value="inmail">InMail</SelectItem>
+                      <SelectItem value="follow">Follow Profile</SelectItem>
+                      <SelectItem value="send_email">Send Email</SelectItem>
+                      <SelectItem value="withdraw_invite">Withdraw Invite</SelectItem>
+                      <SelectItem value="delay">Add Delay</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {(branchConfig.trueBranchAction === 'send_email' || 
+                    branchConfig.trueBranchAction === 'message' || 
+                    branchConfig.trueBranchAction === 'inmail' ||
+                    branchConfig.trueBranchAction === 'send_invite_with_note') && (
+                    <div className="mt-2">
+                      <Label className="text-xs text-gray-300">Message</Label>
+                      <Textarea
+                        value={branchConfig.trueMessage || ''}
+                        onChange={(e) => setBranchConfig({...branchConfig, trueMessage: e.target.value})}
+                        placeholder="Hi {{firstName}}, thanks for connecting..."
+                        className="bg-slate-800/50 border-green-500/30 text-white text-xs mt-1"
+                        rows={3}
+                      />
+                    </div>
+                  )}
+
+                  {branchConfig.trueBranchAction === 'delay' && (
+                    <div className="mt-2">
+                      <Label className="text-xs text-gray-300">Wait Days</Label>
+                      <Input
+                        type="number"
+                        value={branchConfig.trueDelay || 3}
+                        onChange={(e) => setBranchConfig({...branchConfig, trueDelay: parseInt(e.target.value)})}
+                        className="bg-slate-800/50 border-green-500/30 text-white text-xs mt-1"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* FALSE Branch */}
+              <div className="p-4 rounded-xl border-2 border-red-500/30 bg-red-500/5">
+                <div className="flex items-center gap-2 mb-3">
+                  <XCircle className="w-5 h-5 text-red-400" />
+                  <h3 className="text-sm font-bold text-red-400">FALSE / NO Path</h3>
+                </div>
+                <p className="text-xs text-gray-400 mb-3">What happens if condition is not met?</p>
+                
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-300">Next Action</Label>
+                  <Select 
+                    value={branchConfig.falseBranchAction} 
+                    onValueChange={(val) => setBranchConfig({...branchConfig, falseBranchAction: val as any})}
+                  >
+                    <SelectTrigger className="bg-slate-800/50 border-red-500/30 text-white text-xs">
+                      <SelectValue placeholder="Select action" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No action (add later)</SelectItem>
+                      <SelectItem value="send_invite">Send LinkedIn Invite</SelectItem>
+                      <SelectItem value="send_invite_with_note">Send LinkedIn Invite with note</SelectItem>
+                      <SelectItem value="message">LinkedIn Message</SelectItem>
+                      <SelectItem value="inmail">InMail</SelectItem>
+                      <SelectItem value="follow">Follow Profile</SelectItem>
+                      <SelectItem value="send_email">Send Email</SelectItem>
+                      <SelectItem value="withdraw_invite">Withdraw Invite</SelectItem>
+                      <SelectItem value="delay">Add Delay</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {(branchConfig.falseBranchAction === 'send_email' || 
+                    branchConfig.falseBranchAction === 'message' || 
+                    branchConfig.falseBranchAction === 'inmail' ||
+                    branchConfig.falseBranchAction === 'send_invite_with_note') && (
+                    <div className="mt-2">
+                      <Label className="text-xs text-gray-300">Message</Label>
+                      <Textarea
+                        value={branchConfig.falseMessage || ''}
+                        onChange={(e) => setBranchConfig({...branchConfig, falseMessage: e.target.value})}
+                        placeholder="Hi {{firstName}}, I wanted to reach out..."
+                        className="bg-slate-800/50 border-red-500/30 text-white text-xs mt-1"
+                        rows={3}
+                      />
+                    </div>
+                  )}
+
+                  {branchConfig.falseBranchAction === 'delay' && (
+                    <div className="mt-2">
+                      <Label className="text-xs text-gray-300">Wait Days</Label>
+                      <Input
+                        type="number"
+                        value={branchConfig.falseDelay || 3}
+                        onChange={(e) => setBranchConfig({...branchConfig, falseDelay: parseInt(e.target.value)})}
+                        className="bg-slate-800/50 border-red-500/30 text-white text-xs mt-1"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Info Message */}
+            <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-cyan-400 mt-0.5" />
+                <div>
+                  <p className="text-xs text-gray-300 font-medium">You can always add more actions later</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Select "No action" if you want to configure branch steps manually in the visual builder
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
               <Button
                 onClick={handleSaveCondition}
-                className="flex-1 bg-gradient-to-r from-red-500 to-red-600"
+                className="flex-1 bg-gradient-to-r from-orange-500 to-red-600"
               >
-                Add Condition
+                <GitBranch className="w-4 h-4 mr-2" />
+                Create Branch
               </Button>
               <Button
                 variant="outline"
-                onClick={() => setShowConditionDialog(false)}
+                onClick={() => {
+                  setShowConditionDialog(false);
+                  setBranchConfig({ trueBranchAction: 'none', falseBranchAction: 'none' });
+                }}
                 className="bg-white/5 border-white/10 text-white"
               >
                 Cancel
@@ -2194,6 +3090,383 @@ export default function SequenceBuilderPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Multichannel Filter Dialog */}
+      <Dialog open={showMultichannelFilterDialog} onOpenChange={setShowMultichannelFilterDialog}>
+        <DialogContent className="bg-slate-900 border-white/10 max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-white text-2xl flex items-center gap-2">
+              <Users className="w-6 h-6 text-cyan-400" />
+              Multichannel Audience Filter
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Stats Display */}
+            <div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/30 rounded-xl p-6">
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-xl bg-blue-500/20">
+                  <AlertCircle className="w-6 h-6 text-blue-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-white mb-3">Prospect Analysis</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-300">Total Selected Prospects:</span>
+                      <span className="font-bold text-white">{totalProspects}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-green-400">
+                      <span className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4" />
+                        Have Both LinkedIn & Email:
+                      </span>
+                      <span className="font-bold">{completeProspects}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-amber-400">
+                      <span className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4" />
+                        Missing LinkedIn or Email:
+                      </span>
+                      <span className="font-bold">{incompleteProspects}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+              <p className="text-sm text-amber-200">
+                <strong>Note:</strong> Multichannel outreach requires both LinkedIn and Email. {incompleteProspects} prospects are missing one or both channels.
+              </p>
+            </div>
+
+            {/* Options */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center text-white font-bold text-sm">
+                  1
+                </div>
+                <Button
+                  onClick={() => {
+                    setShowMultichannelFilterDialog(false);
+                    setShowTemplateChoice(true);
+                  }}
+                  className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 h-auto py-4"
+                >
+                  <div className="flex items-center gap-3 w-full">
+                    <CheckCircle className="w-5 h-5" />
+                    <div className="text-left flex-1">
+                      <div className="font-semibold">Continue with {completeProspects} Complete Prospects</div>
+                      <div className="text-xs opacity-80">Start outreach for prospects with both channels</div>
+                    </div>
+                  </div>
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center text-white font-bold text-sm">
+                  2
+                </div>
+                <div className="flex-1 space-y-2">
+                  <Label className="text-white text-sm">Create Group for Incomplete Prospects</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newGroupName}
+                      onChange={(e) => setNewGroupName(e.target.value)}
+                      placeholder="Enter group name..."
+                      className="flex-1 bg-slate-800 border-white/10 text-white"
+                    />
+                    <Button
+                      onClick={() => {
+                        if (newGroupName.trim()) {
+                          // Add new group for incomplete prospects
+                          const newGroup = {
+                            id: Date.now().toString(),
+                            name: newGroupName,
+                            description: 'Prospects missing LinkedIn or Email',
+                            offering: 'mixed',
+                            prospectCount: incompleteProspects,
+                            selected: false
+                          };
+                          setGroups([...groups, newGroup]);
+                          
+                          // Show notification
+                          const notificationId = Date.now().toString();
+                          setNotifications([...notifications, {
+                            id: notificationId,
+                            message: `✅ Group "${newGroupName}" created with ${incompleteProspects} prospects`,
+                            type: 'success'
+                          }]);
+                          setTimeout(() => {
+                            setNotifications(prev => prev.filter(n => n.id !== notificationId));
+                          }, 5000);
+                          
+                          setNewGroupName('');
+                          setShowMultichannelFilterDialog(false);
+                          setShowTemplateChoice(true);
+                        }
+                      }}
+                      disabled={!newGroupName.trim()}
+                      className="bg-blue-500 hover:bg-blue-600"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Create
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-400">You can run a separate campaign for these prospects later</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Template Choice Dialog */}
+      <Dialog open={showTemplateChoice} onOpenChange={setShowTemplateChoice}>
+        <DialogContent className="bg-slate-900 border-white/10 max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-white text-2xl flex items-center gap-2">
+              <Sparkles className="w-6 h-6 text-cyan-400" />
+              Choose Your Starting Point
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <p className="text-gray-300 text-sm">
+              Would you like to start with a pre-built template or create a custom sequence from scratch?
+            </p>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Template Option */}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  setTemplateChoice('template');
+                  setSequenceTree(getDefaultMultichannelTemplate());
+                  setViewMode('sequence');
+                  setShowTemplateChoice(false);
+                  
+                  // Show notification
+                  const notificationId = Date.now().toString();
+                  setNotifications([...notifications, {
+                    id: notificationId,
+                    message: '✨ Multichannel template loaded! Customize it to fit your needs.',
+                    type: 'success'
+                  }]);
+                  setTimeout(() => {
+                    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+                  }, 5000);
+                }}
+                className="p-6 rounded-xl border-2 border-green-500/30 bg-gradient-to-br from-green-500/10 to-emerald-600/10 hover:from-green-500/20 hover:to-emerald-600/20 transition-all text-left"
+              >
+                <div className="flex flex-col items-center text-center gap-3">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500/20 to-emerald-600/20 flex items-center justify-center">
+                    <Sparkles className="w-8 h-8 text-green-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white mb-1">Start with Template</h3>
+                    <p className="text-xs text-gray-400">Pre-built multichannel sequence you can customize</p>
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-green-400">
+                    <CheckCircle className="w-3 h-3" />
+                    <span>Recommended</span>
+                  </div>
+                </div>
+              </motion.button>
+
+              {/* Custom Option */}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  setTemplateChoice('custom');
+                  // Start with minimal sequence - first step
+                  setSequenceTree({
+                    id: '1',
+                    type: 'send_email',
+                    label: 'Send Email',
+                    data: {
+                      subject: '',
+                      message: '',
+                    },
+                    children: [],
+                    position: { x: 0, y: 0 }
+                  });
+                  setViewMode('sequence');
+                  setShowTemplateChoice(false);
+                  
+                  // Show notification
+                  const notificationId = Date.now().toString();
+                  setNotifications([...notifications, {
+                    id: notificationId,
+                    message: '🎨 Custom sequence started! Build your flow step by step.',
+                    type: 'info'
+                  }]);
+                  setTimeout(() => {
+                    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+                  }, 5000);
+                }}
+                className="p-6 rounded-xl border-2 border-blue-500/30 bg-gradient-to-br from-blue-500/10 to-cyan-600/10 hover:from-blue-500/20 hover:to-cyan-600/20 transition-all text-left"
+              >
+                <div className="flex flex-col items-center text-center gap-3">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-600/20 flex items-center justify-center">
+                    <Edit className="w-8 h-8 text-blue-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white mb-1">Build Custom</h3>
+                    <p className="text-xs text-gray-400">Start from scratch and create your own flow</p>
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-blue-400">
+                    <Sparkles className="w-3 h-3" />
+                    <span>Full Control</span>
+                  </div>
+                </div>
+              </motion.button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Prospect View Dialog */}
+      <Dialog open={showProspectView} onOpenChange={setShowProspectView}>
+        <DialogContent className="bg-slate-900 border-white/10 max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-white text-2xl flex items-center gap-2">
+              <Users className="w-6 h-6 text-cyan-400" />
+              Prospects at This Step
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              View-only list of prospects who are at or have passed through this action
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-auto mt-4">
+            <div className="bg-slate-800/30 rounded-xl border border-white/10 overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-slate-800/50 border-b border-white/10">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-300 uppercase tracking-wider">Name</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-300 uppercase tracking-wider">Company</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-300 uppercase tracking-wider">Position</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-300 uppercase tracking-wider">Email</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-300 uppercase tracking-wider">LinkedIn</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-300 uppercase tracking-wider">Status</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-300 uppercase tracking-wider">Last Activity</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {[
+                    { id: 1, name: 'Sarah Johnson', company: 'TechCorp Inc', position: 'VP of Marketing', email: 'sarah.j@techcorp.com', linkedin: 'linkedin.com/in/sarahjohnson', status: 'Active', lastActivity: '2 hours ago' },
+                    { id: 2, name: 'Michael Chen', company: 'StartupXYZ', position: 'CEO & Founder', email: 'michael@startupxyz.io', linkedin: 'linkedin.com/in/michaelchen', status: 'Active', lastActivity: '5 hours ago' },
+                    { id: 3, name: 'Emily Rodriguez', company: 'Enterprise Solutions', position: 'Director of Sales', email: 'e.rodriguez@enterprise.com', linkedin: 'linkedin.com/in/emilyrod', status: 'Responded', lastActivity: '1 day ago' },
+                    { id: 4, name: 'David Park', company: 'Innovation Labs', position: 'CTO', email: 'david@innovationlabs.com', linkedin: 'linkedin.com/in/davidpark', status: 'Active', lastActivity: '3 hours ago' },
+                    { id: 5, name: 'Jessica Thompson', company: 'Global Ventures', position: 'Head of Growth', email: 'jessica.t@globalventures.com', linkedin: 'linkedin.com/in/jessicathompson', status: 'Pending', lastActivity: '6 hours ago' },
+                    { id: 6, name: 'Alex Kumar', company: 'CloudTech Systems', position: 'VP of Engineering', email: 'alex@cloudtech.com', linkedin: 'linkedin.com/in/alexkumar', status: 'Active', lastActivity: '4 hours ago' },
+                    { id: 7, name: 'Rachel Martinez', company: 'Digital Dynamics', position: 'Marketing Manager', email: 'rachel.m@digitaldynamics.com', linkedin: 'linkedin.com/in/rachelmartinez', status: 'Responded', lastActivity: '8 hours ago' },
+                    { id: 8, name: 'James Wilson', company: 'Fintech Solutions', position: 'Chief Revenue Officer', email: 'james@fintech.com', linkedin: 'linkedin.com/in/jameswilson', status: 'Active', lastActivity: '1 hour ago' },
+                    { id: 9, name: 'Sophia Lee', company: 'AI Innovations', position: 'Product Director', email: 'sophia@aiinnovations.com', linkedin: 'linkedin.com/in/sophialee', status: 'Active', lastActivity: '7 hours ago' },
+                    { id: 10, name: 'Thomas Anderson', company: 'SaaS Platform Co', position: 'VP of Business Dev', email: 'thomas@saasplatform.com', linkedin: 'linkedin.com/in/thomasanderson', status: 'Pending', lastActivity: '2 days ago' },
+                    { id: 11, name: 'Olivia Brown', company: 'Marketing Pros', position: 'CMO', email: 'olivia@marketingpros.com', linkedin: 'linkedin.com/in/oliviabrown', status: 'Active', lastActivity: '5 hours ago' },
+                    { id: 12, name: 'Daniel Kim', company: 'Tech Startups Inc', position: 'Founder', email: 'daniel@techstartups.com', linkedin: 'linkedin.com/in/danielkim', status: 'Responded', lastActivity: '12 hours ago' },
+                  ].map((prospect) => (
+                    <tr key={prospect.id} className="hover:bg-slate-800/30 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-xs font-semibold">
+                            {prospect.name.split(' ').map(n => n[0]).join('')}
+                          </div>
+                          <span className="text-sm font-medium text-white">{prospect.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-300">{prospect.company}</td>
+                      <td className="px-4 py-3 text-sm text-gray-300">{prospect.position}</td>
+                      <td className="px-4 py-3 text-sm text-gray-400">{prospect.email}</td>
+                      <td className="px-4 py-3 text-sm text-blue-400 hover:text-blue-300 cursor-pointer truncate max-w-[150px]">{prospect.linkedin}</td>
+                      <td className="px-4 py-3">
+                        <Badge className={`text-xs ${
+                          prospect.status === 'Active' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                          prospect.status === 'Responded' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                          'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                        }`}>
+                          {prospect.status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-400">{prospect.lastActivity}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Summary Stats */}
+            <div className="grid grid-cols-4 gap-4 mt-6">
+              <Card className="border-white/10 bg-slate-800/30">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-cyan-500/20">
+                      <Users className="w-5 h-5 text-cyan-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">12</p>
+                      <p className="text-xs text-gray-400">Total Prospects</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-white/10 bg-slate-800/30">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-green-500/20">
+                      <CheckCircle className="w-5 h-5 text-green-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">8</p>
+                      <p className="text-xs text-gray-400">Active</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-white/10 bg-slate-800/30">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-blue-500/20">
+                      <Mail className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">3</p>
+                      <p className="text-xs text-gray-400">Responded</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-white/10 bg-slate-800/30">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-yellow-500/20">
+                      <Clock className="w-5 h-5 text-yellow-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">2</p>
+                      <p className="text-xs text-gray-400">Pending</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-white/10">
+            <Button
+              variant="outline"
+              onClick={() => setShowProspectView(false)}
+              className="bg-white/5 border-white/10 text-white hover:bg-white/10"
+            >
+              Close
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 

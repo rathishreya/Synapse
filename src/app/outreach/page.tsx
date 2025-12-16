@@ -69,7 +69,7 @@ type Campaign = {
 };
 
 export default function OutreachPage() {
-  const [viewTab, setViewTab] = useState<'campaigns' | 'templates' | 'analytics'>('campaigns');
+  const [viewTab, setViewTab] = useState<'campaigns'/* | 'templates' | 'analytics'*/>('campaigns');
   const [campaignFilter, setCampaignFilter] = useState<'all' | 'active' | 'scheduled' | 'draft' | 'completed'>('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createStep, setCreateStep] = useState<'basic' | 'content' | 'sequence' | 'audience' | 'schedule'>('basic');
@@ -84,6 +84,8 @@ export default function OutreachPage() {
     offering: '',
     template: '',
     emailBody: '',
+    outreachType: 'single', // 'single' or 'multichannel'
+    singleChannelType: 'email', // 'email' or 'linkedin'
     audienceType: 'all',
     selectedGroups: [] as string[],
     scheduleType: 'now',
@@ -284,13 +286,15 @@ export default function OutreachPage() {
                 <Button
                   variant="outline"
                   className="bg-white/5 border-white/10 text-white hover:bg-white/10"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <Workflow className="w-4 h-4 mr-2" />
                   Visual Builder
                 </Button>
               </Link>
               <Button
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   setShowCreateDialog(true);
                   setCreateStep('basic');
                 }}
@@ -304,7 +308,7 @@ export default function OutreachPage() {
 
           {/* Navigation Tabs */}
           <div className="flex gap-2">
-            {['campaigns', 'templates', 'analytics'].map((tab) => (
+            {['campaigns'/*, 'templates', 'analytics'*/].map((tab) => (
               <Button
                 key={tab}
                 variant={viewTab === tab ? 'default' : 'outline'}
@@ -315,8 +319,8 @@ export default function OutreachPage() {
                 onClick={() => setViewTab(tab as any)}
               >
                 {tab === 'campaigns' && <Target className="w-4 h-4 mr-2" />}
-                {tab === 'templates' && <Layers className="w-4 h-4 mr-2" />}
-                {tab === 'analytics' && <BarChart3 className="w-4 h-4 mr-2" />}
+                {/* {tab === 'templates' && <Layers className="w-4 h-4 mr-2" />} */}
+                {/* {tab === 'analytics' && <BarChart3 className="w-4 h-4 mr-2" />} */}
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
               </Button>
             ))}
@@ -416,24 +420,45 @@ export default function OutreachPage() {
                           </p>
                         </div>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
-                            <Edit className="w-3.5 h-3.5 mr-1" />
-                            Edit
-                          </Button>
+                          <Link href="/outreach/builder">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="bg-white/5 border-white/10 text-white hover:bg-white/10"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Edit className="w-3.5 h-3.5 mr-1" />
+                              Edit
+                            </Button>
+                          </Link>
                           {campaign.status === 'Active' && (
-                            <Button size="sm" variant="outline" className="bg-orange-500/10 border-orange-500/30 text-orange-400 hover:bg-orange-500/20">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="bg-orange-500/10 border-orange-500/30 text-orange-400 hover:bg-orange-500/20"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <Pause className="w-3.5 h-3.5 mr-1" />
                               Pause
                             </Button>
                           )}
                           {campaign.status === 'Paused' && (
-                            <Button size="sm" variant="outline" className="bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <Play className="w-3.5 h-3.5 mr-1" />
                               Resume
                             </Button>
                           )}
                           {campaign.status === 'Draft' && (
-                            <Button size="sm" className="bg-gradient-to-r from-cyan-500 to-blue-600">
+                            <Button 
+                              size="sm" 
+                              className="bg-gradient-to-r from-cyan-500 to-blue-600"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <Send className="w-3.5 h-3.5 mr-1" />
                               Launch
                             </Button>
@@ -537,7 +562,7 @@ export default function OutreachPage() {
 
                       {/* Actions */}
                       <div className="flex gap-2 pt-4 border-t border-white/10 mt-4">
-                        <Button size="sm" variant="outline" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
+                        {/* <Button size="sm" variant="outline" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
                           <Copy className="w-3.5 h-3.5 mr-1" />
                           Duplicate
                         </Button>
@@ -548,8 +573,13 @@ export default function OutreachPage() {
                         <Button size="sm" variant="outline" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
                           <Archive className="w-3.5 h-3.5 mr-1" />
                           Archive
-                        </Button>
-                        <Button size="sm" variant="outline" className="bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20">
+                        </Button> */}
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <Trash2 className="w-3.5 h-3.5 mr-1" />
                           Delete
                         </Button>
@@ -770,6 +800,82 @@ export default function OutreachPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  {/* Outreach Type Selection */}
+                  <div className="space-y-4 p-4 bg-slate-800/30 rounded-lg border border-white/10">
+                    <Label className="text-gray-300 block font-semibold">Outreach Type *</Label>
+                    
+                    <div className="space-y-3">
+                      <div 
+                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                          campaignForm.outreachType === 'single' 
+                            ? 'border-cyan-500 bg-cyan-500/10' 
+                            : 'border-white/10 bg-slate-800/50 hover:border-white/20'
+                        }`}
+                        onClick={() => setCampaignForm({...campaignForm, outreachType: 'single'})}
+                      >
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="radio"
+                            checked={campaignForm.outreachType === 'single'}
+                            onChange={() => setCampaignForm({...campaignForm, outreachType: 'single'})}
+                            className="mt-1"
+                          />
+                          <div className="flex-1">
+                            <div className="text-white font-semibold mb-1">Single Channel</div>
+                            <p className="text-sm text-gray-400">Focus on one channel (Email or LinkedIn)</p>
+                            
+                            {campaignForm.outreachType === 'single' && (
+                              <div className="mt-3 ml-6 space-y-2">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    name="singleChannel"
+                                    checked={campaignForm.singleChannelType === 'email'}
+                                    onChange={() => setCampaignForm({...campaignForm, singleChannelType: 'email'})}
+                                    className="text-cyan-500"
+                                  />
+                                  <span className="text-white">Email Only</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    name="singleChannel"
+                                    checked={campaignForm.singleChannelType === 'linkedin'}
+                                    onChange={() => setCampaignForm({...campaignForm, singleChannelType: 'linkedin'})}
+                                    className="text-cyan-500"
+                                  />
+                                  <span className="text-white">LinkedIn Only</span>
+                                </label>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div 
+                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                          campaignForm.outreachType === 'multichannel' 
+                            ? 'border-cyan-500 bg-cyan-500/10' 
+                            : 'border-white/10 bg-slate-800/50 hover:border-white/20'
+                        }`}
+                        onClick={() => setCampaignForm({...campaignForm, outreachType: 'multichannel'})}
+                      >
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="radio"
+                            checked={campaignForm.outreachType === 'multichannel'}
+                            onChange={() => setCampaignForm({...campaignForm, outreachType: 'multichannel'})}
+                            className="mt-1"
+                          />
+                          <div className="flex-1">
+                            <div className="text-white font-semibold mb-1">Multichannel</div>
+                            <p className="text-sm text-gray-400">Combine Email + LinkedIn for maximum reach</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="flex justify-end pt-4">

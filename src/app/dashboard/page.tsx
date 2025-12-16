@@ -107,7 +107,7 @@ export default function DashboardPage() {
     { icon: Zap, label: 'Outreach', color: 'from-cyan-500 to-blue-600', href: '/outreach' },
     { icon: Phone, label: 'Cold Call', color: 'from-green-500 to-green-600', href: '/cold-calling' },
     { icon: Calendar, label: 'Schedule Meeting', color: 'from-purple-500 to-purple-600', href: '/meetings' },
-    { icon: Linkedin, label: 'LinkedIn', color: 'from-blue-600 to-blue-700', href: '/linkedin' },
+    // { icon: Linkedin, label: 'LinkedIn', color: 'from-blue-600 to-blue-700', href: '/linkedin' },
     // { icon: Mail, label: 'Cold Mailing', color: 'from-blue-500 to-blue-600', href: '/cold-mailing' },
     // { icon: Activity, label: 'Email Campaign', color: 'from-orange-500 to-orange-600', href: '/campaigns' },
     // { icon: Twitter, label: 'Twitter', color: 'from-sky-400 to-sky-500', href: '/twitter' },
