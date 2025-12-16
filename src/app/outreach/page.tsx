@@ -221,6 +221,8 @@ export default function OutreachPage() {
       offering: '',
       template: '',
       emailBody: '',
+      outreachType: 'single',
+      singleChannelType: 'email',
       audienceType: 'all',
       selectedGroups: [],
       scheduleType: 'now',
@@ -615,7 +617,7 @@ export default function OutreachPage() {
         )}
 
         {/* Templates Tab */}
-        {viewTab === 'templates' && (
+        {false && viewTab === 'campaigns' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {templates.map((template, index) => (
               <motion.div
@@ -667,7 +669,7 @@ export default function OutreachPage() {
         )}
 
         {/* Analytics Tab */}
-        {viewTab === 'analytics' && (
+        {false && viewTab === 'campaigns' && (
           <Card className="border-white/10 bg-slate-900/50 backdrop-blur-xl">
             <CardContent className="p-12 text-center">
               <BarChart3 className="w-16 h-16 mx-auto mb-4 text-gray-600" />
