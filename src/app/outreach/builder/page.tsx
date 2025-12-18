@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   ArrowLeft,
   Plus,
@@ -42,7 +43,9 @@ import {
   Trash2,
   Edit,
   Copy,
-  AlertCircle
+  AlertCircle,
+  Calendar,
+  Globe
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -121,6 +124,33 @@ export default function SequenceBuilderPage() {
   // Prospect view states
   const [showProspectView, setShowProspectView] = useState(false);
   const [selectedNodeForProspects, setSelectedNodeForProspects] = useState<string | null>(null);
+  
+  // Campaign metadata states
+  const [campaignDescription, setCampaignDescription] = useState('');
+  const [scheduledDate, setScheduledDate] = useState<string | null>(null);
+  const [createdDate] = useState(new Date());
+  
+  // Sending limits states
+  const [dailyLinkedInInviteLimit, setDailyLinkedInInviteLimit] = useState(20);
+  const [dailyEmailSendLimit, setDailyEmailSendLimit] = useState(50);
+  const [dailyLinkedInDmLimit, setDailyLinkedInDmLimit] = useState(30);
+  
+  // Campaign status
+  const [campaignStatus, setCampaignStatus] = useState<'active' | 'paused' | 'stopped'>('active');
+  
+  // Sending schedule states
+  const [enabledDays, setEnabledDays] = useState<Record<string, boolean>>({
+    monday: true,
+    tuesday: true,
+    wednesday: true,
+    thursday: true,
+    friday: true,
+    saturday: false,
+    sunday: false
+  });
+  const [timeWindowStart, setTimeWindowStart] = useState('09:00');
+  const [timeWindowEnd, setTimeWindowEnd] = useState('18:00');
+  const [timezone, setTimezone] = useState('America/New_York');
   
   // Groups state
   const [groups, setGroups] = useState<Array<{
@@ -2221,47 +2251,61 @@ export default function SequenceBuilderPage() {
                   Campaign Settings
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Campaign Info */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-white">Campaign Information</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-slate-800/50 rounded-lg border border-white/10">
-                      <Label className="text-gray-400 text-sm">Campaign Name</Label>
-                      <p className="text-white font-semibold mt-1">{campaignName || 'Untitled Campaign'}</p>
-                    </div>
-                    <div className="p-4 bg-slate-800/50 rounded-lg border border-white/10">
-                      <Label className="text-gray-400 text-sm">Created Date</Label>
-                      <p className="text-white font-semibold mt-1">
-                        {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </p>
-                    </div>
+              <CardContent className="space-y-8">
+                {/* Campaign Basics */}
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-base font-semibold text-white mb-1">Campaign Name</h3>
+                    <p className="text-xs text-gray-500 mb-3">Give your campaign a memorable name to easily identify it later</p>
                   </div>
+                  <Input
+                    value={campaignName}
+                    onChange={(e) => setCampaignName(e.target.value)}
+                    placeholder="e.g., Q1 Enterprise Outreach Campaign"
+                    className="bg-slate-800/50 border-white/10 text-white text-base h-11"
+                  />
                 </div>
 
-                {/* Outreach Type */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-white">Outreach Configuration</h3>
-                  <div className="p-4 bg-slate-800/50 rounded-lg border border-white/10">
-                    <Label className="text-gray-400 text-sm mb-2 block">Outreach Type</Label>
-                    <div className="flex items-center gap-2">
+                {/* Campaign Description */}
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-base font-semibold text-white mb-1">Campaign Description</h3>
+                    <p className="text-xs text-gray-500 mb-3">Add notes or details about this campaign</p>
+                  </div>
+                  <Textarea
+                    value={campaignDescription}
+                    onChange={(e) => setCampaignDescription(e.target.value)}
+                    placeholder="Describe the purpose, goals, or any important details about this campaign..."
+                    className="bg-slate-800/50 border-white/10 text-white min-h-[100px]"
+                    rows={4}
+                  />
+                </div>
+
+                {/* Outreach Configuration - View Only */}
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-base font-semibold text-white mb-1">Outreach Channels</h3>
+                    <p className="text-xs text-gray-500 mb-3">Campaign channel configuration (set during creation)</p>
+                  </div>
+                  <div className="p-4 bg-slate-800/30 rounded-lg border border-white/10">
+                    <div className="flex items-center gap-3">
                       {outreachType === 'single' ? (
                         <>
                           <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">
                             {singleChannelType === 'email' ? 'Email' : 'LinkedIn'} Template
                           </Badge>
-                          <span className="text-gray-400 text-sm">Single Channel</span>
+                          <span className="text-gray-300 text-sm">Single Channel</span>
                         </>
                       ) : (
                         <>
                           <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
                             Multichannel Template
                           </Badge>
-                          <span className="text-gray-400 text-sm">Email + LinkedIn</span>
+                          <span className="text-gray-300 text-sm">Email + LinkedIn</span>
                         </>
                       )}
                     </div>
-                    <p className="text-sm text-gray-500 mt-2">
+                    <p className="text-xs text-gray-500 mt-2">
                       {outreachType === 'single' 
                         ? `This campaign uses a ${singleChannelType} sequence template`
                         : 'This campaign combines Email and LinkedIn touchpoints'}
@@ -2269,55 +2313,367 @@ export default function SequenceBuilderPage() {
                   </div>
                 </div>
 
+                {/* Groups Included - View Only */}
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-base font-semibold text-white mb-1">Target Groups</h3>
+                    <p className="text-xs text-gray-500 mb-3">Prospect groups included in this campaign</p>
+                  </div>
+                  <div className="p-4 bg-slate-800/30 rounded-lg border border-white/10">
+                    <div className="flex items-center gap-3">
+                      <Users className="w-5 h-5 text-cyan-400" />
+                      <div>
+                        <p className="text-white font-semibold">
+                          {groups.filter(g => g.selected).length} {groups.filter(g => g.selected).length === 1 ? 'Group' : 'Groups'} Included
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {groups.filter(g => g.selected).reduce((sum, g) => sum + g.prospectCount, 0)} total prospects
+                        </p>
+                      </div>
+                    </div>
+                    {groups.filter(g => g.selected).length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-white/10">
+                        <div className="space-y-2">
+                          {groups.filter(g => g.selected).map((group) => (
+                            <div key={group.id} className="flex items-center justify-between text-sm">
+                              <span className="text-gray-300">{group.name}</span>
+                              <Badge variant="secondary" className="bg-slate-700/50 text-gray-300 border-slate-600/50">
+                                {group.prospectCount} prospects
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Sequence Summary */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-white">Sequence Overview</h3>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="p-4 bg-slate-800/50 rounded-lg border border-white/10 text-center">
-                      <Sparkles className="w-8 h-8 mx-auto mb-2 text-cyan-400" />
-                      <p className="text-2xl font-bold text-white">
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-base font-semibold text-white mb-1">Sequence Overview</h3>
+                    <p className="text-xs text-gray-500 mb-4">Quick stats about your outreach sequence</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="p-4 bg-gradient-to-br from-cyan-500/10 to-blue-600/10 rounded-lg border border-cyan-500/20 text-center">
+                      <Sparkles className="w-6 h-6 mx-auto mb-2 text-cyan-400" />
+                      <p className="text-2xl font-bold text-white mb-1">
                         {sequenceTree ? countNodes(sequenceTree) - countNodes(sequenceTree, 'end') : 0}
                       </p>
-                      <p className="text-sm text-gray-400">Total Actions</p>
+                      <p className="text-xs text-gray-400">Actions</p>
                     </div>
-                    <div className="p-4 bg-slate-800/50 rounded-lg border border-white/10 text-center">
-                      <Clock className="w-8 h-8 mx-auto mb-2 text-blue-400" />
-                      <p className="text-2xl font-bold text-white">
+                    <div className="p-4 bg-gradient-to-br from-blue-500/10 to-indigo-600/10 rounded-lg border border-blue-500/20 text-center">
+                      <Clock className="w-6 h-6 mx-auto mb-2 text-blue-400" />
+                      <p className="text-2xl font-bold text-white mb-1">
                         {sequenceTree ? countNodes(sequenceTree, 'delay') : 0}
                       </p>
-                      <p className="text-sm text-gray-400">Delays</p>
+                      <p className="text-xs text-gray-400">Delays</p>
                     </div>
-                    <div className="p-4 bg-slate-800/50 rounded-lg border border-white/10 text-center">
-                      <GitBranch className="w-8 h-8 mx-auto mb-2 text-purple-400" />
-                      <p className="text-2xl font-bold text-white">
+                    <div className="p-4 bg-gradient-to-br from-purple-500/10 to-pink-600/10 rounded-lg border border-purple-500/20 text-center">
+                      <GitBranch className="w-6 h-6 mx-auto mb-2 text-purple-400" />
+                      <p className="text-2xl font-bold text-white mb-1">
                         {sequenceTree ? countNodes(sequenceTree, 'condition') : 0}
                       </p>
-                      <p className="text-sm text-gray-400">Conditions</p>
+                      <p className="text-xs text-gray-400">Branches</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Campaign Rules */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-white">Campaign Rules</h3>
+                {/* Sending Limits */}
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-base font-semibold text-white mb-1">Sending Limits</h3>
+                    <p className="text-xs text-gray-500 mb-4">Set daily limits to control outreach volume and maintain account health</p>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm text-gray-300">Daily LinkedIn Invite Limit</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          value={dailyLinkedInInviteLimit}
+                          onChange={(e) => setDailyLinkedInInviteLimit(parseInt(e.target.value) || 0)}
+                          min="0"
+                          className="bg-slate-800/50 border-white/10 text-white"
+                        />
+                        <span className="text-gray-400 text-sm">invites/day</span>
+                      </div>
+                      <p className="text-xs text-gray-500">Maximum LinkedIn connection requests per day</p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label className="text-sm text-gray-300">Daily Email Send Limit</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          value={dailyEmailSendLimit}
+                          onChange={(e) => setDailyEmailSendLimit(parseInt(e.target.value) || 0)}
+                          min="0"
+                          className="bg-slate-800/50 border-white/10 text-white"
+                        />
+                        <span className="text-gray-400 text-sm">emails/day</span>
+                      </div>
+                      <p className="text-xs text-gray-500">Maximum emails to send per day</p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label className="text-sm text-gray-300">Daily LinkedIn DM Limit</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          value={dailyLinkedInDmLimit}
+                          onChange={(e) => setDailyLinkedInDmLimit(parseInt(e.target.value) || 0)}
+                          min="0"
+                          className="bg-slate-800/50 border-white/10 text-white"
+                        />
+                        <span className="text-gray-400 text-sm">messages/day</span>
+                      </div>
+                      <p className="text-xs text-gray-500">Maximum LinkedIn direct messages per day</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sending Schedule */}
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-base font-semibold text-white mb-1 flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-cyan-400" />
+                      Sending Schedule
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1">Control when your campaign sends messages to prospects</p>
+                  </div>
+                  
+                  {/* Day-wise toggles */}
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-white/10">
-                      <span className="text-gray-300">Track Opens</span>
-                      <Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/30">
-                        Enabled
-                      </Badge>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium text-gray-300">Active Days</Label>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            const allEnabled = Object.values(enabledDays).every(v => v);
+                            setEnabledDays({
+                              monday: !allEnabled,
+                              tuesday: !allEnabled,
+                              wednesday: !allEnabled,
+                              thursday: !allEnabled,
+                              friday: !allEnabled,
+                              saturday: !allEnabled,
+                              sunday: !allEnabled
+                            });
+                          }}
+                          className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                        >
+                          {Object.values(enabledDays).every(v => v) ? 'Deselect All' : 'Select All'}
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-white/10">
-                      <span className="text-gray-300">Track Clicks</span>
-                      <Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/30">
-                        Enabled
-                      </Badge>
+                    <div className="grid grid-cols-7 gap-2">
+                      {[
+                        { key: 'monday', label: 'Mon', full: 'Monday' },
+                        { key: 'tuesday', label: 'Tue', full: 'Tuesday' },
+                        { key: 'wednesday', label: 'Wed', full: 'Wednesday' },
+                        { key: 'thursday', label: 'Thu', full: 'Thursday' },
+                        { key: 'friday', label: 'Fri', full: 'Friday' },
+                        { key: 'saturday', label: 'Sat', full: 'Saturday' },
+                        { key: 'sunday', label: 'Sun', full: 'Sunday' }
+                      ].map((day) => (
+                        <button
+                          key={day.key}
+                          onClick={() => {
+                            setEnabledDays({ ...enabledDays, [day.key]: !enabledDays[day.key] });
+                          }}
+                          className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                            enabledDays[day.key]
+                              ? 'border-cyan-500 bg-cyan-500/10 text-cyan-400'
+                              : 'border-white/10 bg-slate-800/30 text-gray-400 hover:border-white/20 hover:bg-slate-800/50'
+                          }`}
+                          title={day.full}
+                        >
+                          <div className={`w-2 h-2 rounded-full ${
+                            enabledDays[day.key] ? 'bg-cyan-400' : 'bg-gray-600'
+                          }`} />
+                          <span className="text-xs font-medium">{day.label}</span>
+                        </button>
+                      ))}
                     </div>
-                    <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-white/10">
-                      <span className="text-gray-300">Auto-stop on Reply</span>
-                      <Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/30">
-                        Enabled
-                      </Badge>
+                  </div>
+
+                  {/* Time window */}
+                  <div className="p-4 bg-slate-800/30 rounded-lg border border-white/10">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Clock className="w-4 h-4 text-blue-400" />
+                      <Label className="text-sm font-medium text-gray-300">Sending Time Window</Label>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs text-gray-400">From</Label>
+                        <div className="relative">
+                          <Input
+                            type="time"
+                            value={timeWindowStart}
+                            onChange={(e) => setTimeWindowStart(e.target.value)}
+                            className="bg-slate-700/50 border-white/10 text-white h-10 pr-10"
+                          />
+                          <Clock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-gray-400">To</Label>
+                        <div className="relative">
+                          <Input
+                            type="time"
+                            value={timeWindowEnd}
+                            onChange={(e) => setTimeWindowEnd(e.target.value)}
+                            className="bg-slate-700/50 border-white/10 text-white h-10 pr-10"
+                          />
+                          <Clock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-3">
+                      Messages will only be sent between {timeWindowStart} and {timeWindowEnd} on active days
+                    </p>
+                  </div>
+
+                  {/* Timezone */}
+                  <div className="p-4 bg-slate-800/30 rounded-lg border border-white/10">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Globe className="w-4 h-4 text-purple-400" />
+                      <Label className="text-sm font-medium text-gray-300">Timezone</Label>
+                    </div>
+                    <Select value={timezone} onValueChange={setTimezone}>
+                      <SelectTrigger className="bg-slate-700/50 border-white/10 text-white h-10">
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-4 h-4 text-gray-400" />
+                          <SelectValue />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="America/New_York">🇺🇸 Eastern Time (ET)</SelectItem>
+                        <SelectItem value="America/Chicago">🇺🇸 Central Time (CT)</SelectItem>
+                        <SelectItem value="America/Denver">🇺🇸 Mountain Time (MT)</SelectItem>
+                        <SelectItem value="America/Los_Angeles">🇺🇸 Pacific Time (PT)</SelectItem>
+                        <SelectItem value="Europe/London">🇬🇧 London (GMT)</SelectItem>
+                        <SelectItem value="Europe/Paris">🇫🇷 Paris (CET)</SelectItem>
+                        <SelectItem value="Asia/Dubai">🇦🇪 Dubai (GST)</SelectItem>
+                        <SelectItem value="Asia/Kolkata">🇮🇳 Mumbai (IST)</SelectItem>
+                        <SelectItem value="Asia/Singapore">🇸🇬 Singapore (SGT)</SelectItem>
+                        <SelectItem value="Asia/Tokyo">🇯🇵 Tokyo (JST)</SelectItem>
+                        <SelectItem value="Australia/Sydney">🇦🇺 Sydney (AEST)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500 mt-3">
+                      All times are calculated based on the selected timezone
+                    </p>
+                  </div>
+                </div>
+
+                {/* Campaign Actions */}
+                <div className="pt-4 border-t border-white/10">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-base font-semibold text-white">Campaign Controls</h3>
+                    <Button
+                      onClick={() => {
+                        // Handle save logic here
+                        const notificationId = Date.now().toString();
+                        setNotifications([...notifications, {
+                          id: notificationId,
+                          message: 'Campaign settings saved successfully',
+                          type: 'success'
+                        }]);
+                        setTimeout(() => {
+                          setNotifications(prev => prev.filter(n => n.id !== notificationId));
+                        }, 5000);
+                      }}
+                      size="sm"
+                      className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
+                    >
+                      <Save className="w-3.5 h-3.5 mr-1.5" />
+                      Save
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {campaignStatus === 'active' ? (
+                      <Button
+                        onClick={() => setCampaignStatus('paused')}
+                        variant="outline"
+                        size="sm"
+                        className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10 hover:border-yellow-500"
+                      >
+                        <Pause className="w-3.5 h-3.5 mr-1.5" />
+                        Pause
+                      </Button>
+                    ) : campaignStatus === 'paused' ? (
+                      <Button
+                        onClick={() => setCampaignStatus('active')}
+                        variant="outline"
+                        size="sm"
+                        className="border-green-500/50 text-green-400 hover:bg-green-500/10 hover:border-green-500"
+                      >
+                        <Play className="w-3.5 h-3.5 mr-1.5" />
+                        Resume
+                      </Button>
+                    ) : null}
+                    
+                    <Button
+                      onClick={() => {
+                        if (confirm('Are you sure you want to stop this campaign? This action cannot be undone.')) {
+                          setCampaignStatus('stopped');
+                        }
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10 hover:border-orange-500"
+                      disabled={campaignStatus === 'stopped'}
+                    >
+                      <StopCircle className="w-3.5 h-3.5 mr-1.5" />
+                      Stop
+                    </Button>
+                    
+                    <Button
+                      onClick={() => {
+                        if (confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
+                          // Handle delete logic here
+                          const notificationId = Date.now().toString();
+                          setNotifications([...notifications, {
+                            id: notificationId,
+                            message: 'Campaign deleted successfully',
+                            type: 'success'
+                          }]);
+                          setTimeout(() => {
+                            setNotifications(prev => prev.filter(n => n.id !== notificationId));
+                          }, 5000);
+                        }
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="border-red-500/50 text-red-400 hover:bg-red-500/10 hover:border-red-500"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Campaign Metadata - View Only */}
+                <div className="pt-4 border-t border-white/10 space-y-3">
+                  <div>
+                    <h3 className="text-base font-semibold text-white mb-3">Campaign Information</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 bg-slate-800/30 rounded-lg border border-white/10">
+                      <Label className="text-xs text-gray-500 mb-1 block">Created Date</Label>
+                      <p className="text-white font-medium text-sm">
+                        {createdDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-slate-800/30 rounded-lg border border-white/10">
+                      <Label className="text-xs text-gray-500 mb-1 block">Scheduled Date</Label>
+                      <p className="text-white font-medium text-sm">
+                        {scheduledDate 
+                          ? new Date(scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                          : 'Not scheduled'}
+                      </p>
                     </div>
                   </div>
                 </div>
